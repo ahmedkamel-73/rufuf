@@ -1,11 +1,115 @@
-<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مقال - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
-<body><header><h1>رفوف</h1></header><main style="max-width:800px;margin:0 auto;padding:20px"><h2 id="title"></h2><p id="author"></p><img id="cover" style="max-width:100%"><div id="content"></div></main>
-<script src="js/api.js"></script><script>
-const id=new URLSearchParams(location.search).get('id');
-fetch('/api/articles/'+id).then(r=>r.json()).then(a=>{
-  document.getElementById('title').textContent=a.title;
-  document.getElementById('author').textContent=a.author_name||'';
-  document.getElementById('content').innerHTML='<p>'+a.content.replace(/\n/g,'<br>')+'</p>';
-  if(a.cover_url) document.getElementById('cover').src=a.cover_url;
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مقال - رفوف</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.ad-slot{background:#111;border:1px dashed #444;padding:12px;margin:16px 0;border-radius:10px;text-align:center;min-height:70px}
+.ad-slot.platform{border-color:#ff6b00} .ad-slot.publisher{border-color:#22c55e;background:#0f1a0f}
+.ad-label{font-size:11px;color:#888;margin-bottom:6px}
+.article-layout{display:grid;grid-template-columns:1fr 300px;gap:24px;max-width:1200px;margin:0 auto;padding:20px}
+@media(max-width:900px){.article-layout{grid-template-columns:1fr}}
+.article-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;line-height:1.9}
+.article-card h1{margin-bottom:10px}
+.article-card img{border-radius:12px;margin:16px 0}
+</style>
+</head>
+<body>
+<header><h1>📚 رفوف</h1><nav><a href="index.html">الرئيسية</a><a href="articles.html">المقالات</a><a href="publisher.html">لوحة الناشر</a></nav></header>
+
+<main class="article-layout">
+<div>
+  <!-- إعلان المنصة فوق المقال -->
+  <div id="ad-article-platform" class="ad-slot platform"><div class="ad-label">إعلان المنصة</div><span style="color:#666">جاري التحميل...</span></div>
+
+  <article class="article-card">
+    <h1 id="title">جاري التحميل...</h1>
+    <p id="author" style="color:#888;font-size:14px"></p>
+    <img id="cover" style="max-width:100%;display:none">
+    <div id="content" style="margin-top:20px;color:#ddd;white-space:pre-wrap"></div>
+  </article>
+
+  <!-- إعلان الناشر تحت المقال - ده اللي بيكسب منه -->
+  <div id="ad-article-publisher" class="ad-slot publisher"><div class="ad-label">إعلان الناشر 💰</div><span style="color:#666">سيظهر إعلان كاتب هذا المقال هنا</span></div>
+
+  <!-- إعلان منصة ثاني تحت -->
+  <div id="ad-article-platform-2" class="ad-slot platform"><div class="ad-label">إعلان المنصة</div></div>
+</div>
+
+<aside>
+  <div id="ad-sidebar-platform" class="ad-slot platform"><div class="ad-label">إعلان جانبي - المنصة</div></div>
+  <div id="ad-sidebar-publisher" class="ad-slot publisher"><div class="ad-label">إعلان جانبي - الناشر 💰</div></div>
+  <div id="related" style="margin-top:20px"></div>
+</aside>
+</main>
+
+<script src="js/api.js"></script>
+<script src="js/ads.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const id=new URLSearchParams(location.search).get('id');
+  if(!id){ document.getElementById('title').textContent='مقال غير موجود'; return; }
+  try{
+    const a=await fetch('/api/articles/'+id).then(r=>r.json());
+    if(a.error){ document.getElementById('title').textContent=a.error; return; }
+    document.getElementById('title').textContent=a.title;
+    document.getElementById('author').textContent=(a.author_name||a.display_name||'')+' - '+(a.created_at?new Date(a.created_at).toLocaleDateString('ar-EG'):'');
+    document.getElementById('content').textContent=a.content||'';
+    if(a.cover_url){ const img=document.getElementById('cover'); img.src=a.cover_url; img.style.display='block'; }
+
+    // نفس نظام الكتب: إعلانات المنصة + إعلانات الناشر
+    const platformAds=await fetchAds('reader'); // نستخدم نفس placement reader للمقالات عشان إعلاناتك تظهر في الكتب والمقالات
+    const platformArticleAds=await fetchAds('article').then(r=>r.length?r:platformAds);
+    
+    if(platformArticleAds.length>0){
+      renderAd(platformArticleAds[0],'ad-article-platform');
+      if(platformArticleAds[1]) renderAd(platformArticleAds[1],'ad-article-platform-2');
+      if(platformArticleAds[0]) renderAd(platformArticleAds[0],'ad-sidebar-platform');
+    }
+
+    // إعلان الناشر صاحب المقال
+    const ownerId = a.owner_id || a.author_id;
+    if(ownerId){
+      const publisherAds=await fetchAds('reader', ownerId).then(async r=>{ 
+        if(r.length) return r; 
+        return await fetchAds('article', ownerId);
+      });
+      if(publisherAds.length>0){
+        renderAd(publisherAds[0],'ad-article-publisher');
+        if(publisherAds[1]) renderAd(publisherAds[1],'ad-sidebar-publisher');
+      } else {
+        document.getElementById('ad-article-publisher').innerHTML='<div class="ad-label">إعلان الناشر #'+ownerId+'</div><span style="color:#666">الكاتب لم يضف إعلان بعد - ضيف إعلانك من لوحة الناشر → إعلاناتي</span>';
+      }
+    } else {
+      document.getElementById('ad-article-publisher').style.display='none';
+    }
+
+  }catch(e){
+    document.getElementById('title').textContent='خطأ: '+e.message;
+  }
 });
-</script></body></html>
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</html>
