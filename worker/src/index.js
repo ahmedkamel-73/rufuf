@@ -1,4 +1,3 @@
-
 import bcrypt from 'bcryptjs';
 
 export class ForumRoom {
