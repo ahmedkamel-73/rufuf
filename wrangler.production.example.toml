@@ -1,0 +1,15 @@
+name = "rufuf"
+main = "worker/src/index.js"
+compatibility_date = "2026-08-31"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rufuf"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "BOOKS"
+bucket_name = "rufuf-books-private"
+
+[vars]
+APP_ORIGIN = "https://YOUR-DOMAIN"
