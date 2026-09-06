@@ -1,16 +1,5 @@
+
 import bcrypt from 'bcryptjs';
-
-// ===== JWT FIX - bypass GitHub secret scanner =====
-function getJwtKey(env) {
-  const rawSecret = env ? (env.JWT_SECRET || env.JWT_SECRET_FALLBACK) : null;
-  if (rawSecret) return rawSecret;
-  try {
-    return atob("UnVmdWZfU3VwZXJfU2VjcmV0XzIwMjVfQEhobWVkS2FtZWxfNzMh");
-  } catch(e) {
-    return "RufufSuperSecret2025FallbackKeyAhmedKamel73_1234567890";
-  }
-}
-
 
 export class ForumRoom {
   constructor(state, env) { this.state = state; this.env = env; this.sessions = new Set(); }
@@ -65,7 +54,7 @@ function b64urlEncode(str) { return btoa(str).replace(/\+/g,'-').replace(/\//g,'
 function b64urlDecode(str) { str = str.replace(/-/g,'+').replace(/_/g,'/'); while(str.length %4) str+='='; return atob(str); }
 
 async function signJWT(payload, secret) {
-  if (!secret || secret.length < 16) throw new Error('JWT_SECRET too weak');
+  if (!secret || secret.length < 32) throw new Error('JWT_SECRET too weak');
   const header = { alg: 'HS256', typ: 'JWT' };
   const h = b64urlEncode(JSON.stringify(header));
   const p = b64urlEncode(JSON.stringify({ ...payload, exp: Math.floor(Date.now()/1000)+86400*7 }));
@@ -96,9 +85,9 @@ async function getUserFromReq(req, env) {
   const token = auth.replace('Bearer ','').trim();
   if (!token) return null;
   if (token.length < 20) return null;
-  const payload = await verifyJWT(token, getJwtKey(env));
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return null;
-  const user = await env.DB.prepare('SELECT id,email,name,role,is_publisher FROM users WHERE id=?').bind(payload.id).first();
+  const user = await env.DB.prepare('SELECT id,email,name,display_name,bio,avatar_url,role,is_publisher,verified FROM users WHERE id=?').bind(payload.id).first();
   return user;
 }
 
@@ -170,7 +159,7 @@ export default {
       if (!allowed) return json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429);
     }
 
-    if (!getJwtKey(env) || getJwtKey(env).length < 16) {
+    if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) {
       return json({ error: 'Server misconfigured - JWT_SECRET missing' }, 500);
     }
 
@@ -196,7 +185,7 @@ export default {
         const hash = await bcrypt.hash(password, 12); // Increased cost
         try {
           const res = await env.DB.prepare('INSERT INTO users (email,password,name) VALUES (?,?,?)').bind(cleanEmail, hash, cleanName).run();
-          const token = await signJWT({ id: res.meta.last_row_id, email: cleanEmail }, getJwtKey(env));
+          const token = await signJWT({ id: res.meta.last_row_id, email: cleanEmail }, env.JWT_SECRET);
           await env.DB.prepare('INSERT INTO audit_log (user_id, action, ip) VALUES (?,?,?)').bind(res.meta.last_row_id, 'register', ip).run().catch(()=>{});
           return json({ token, user: { id: res.meta.last_row_id, email: cleanEmail, name: cleanName, role: 'reader' } });
         } catch(e){ return json({ error: 'البريد موجود بالفعل' }, 400); }
@@ -220,7 +209,7 @@ export default {
           await env.DB.prepare('INSERT INTO audit_log (user_id, action, ip) VALUES (?,?,?)').bind(user.id, 'failed_login', ip).run().catch(()=>{});
           return json({ error: 'البريد أو كلمة المرور غير صحيحة' }, 401);
         }
-        const token = await signJWT({ id: user.id, email: user.email }, getJwtKey(env));
+        const token = await signJWT({ id: user.id, email: user.email }, env.JWT_SECRET);
         await env.DB.prepare('INSERT INTO audit_log (user_id, action, ip) VALUES (?,?,?)').bind(user.id, 'login', ip).run().catch(()=>{});
         return json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, is_publisher: user.is_publisher } });
       } catch(e) { return json({ error: 'خطأ في تسجيل الدخول' }, 400); }
@@ -528,6 +517,67 @@ export default {
         }
         return json({ success: true });
       } catch(e) { return json({ error: 'Invalid data' }, 400); }
+    }
+
+
+    // ===== رفوف V10 Professional - بروفايل الناشر =====
+    if (url.pathname === '/api/me' && method === 'GET') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const full = await env.DB.prepare('SELECT id,email,name,display_name,bio,avatar_url,website,role,verified,is_publisher FROM users WHERE id=?').bind(user.id).first();
+      return json(full);
+    }
+
+    if (url.pathname === '/api/me' && method === 'PUT') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      try {
+        const { display_name, bio, website, avatar_url } = await request.json();
+        const cleanName = sanitizeString(display_name||'', 50);
+        const cleanBio = sanitizeString(bio||'', 300);
+        const cleanWebsite = (website||'').slice(0,200);
+        const cleanAvatar = (avatar_url||'').slice(0,500);
+        if (cleanWebsite && cleanWebsite !== '' && !cleanWebsite.startsWith('https://') && !cleanWebsite.startsWith('http://')) return json({ error: 'رابط غير صالح - يجب أن يبدأ بـ https://' }, 400);
+        await env.DB.prepare('UPDATE users SET display_name=?, bio=?, website=?, avatar_url=? WHERE id=?').bind(cleanName, cleanBio, cleanWebsite, cleanAvatar, user.id).run();
+        return json({ success: true });
+      } catch(e){ return json({ error: 'بيانات غير صالحة' }, 400); }
+    }
+
+    if (url.pathname.match(/^\/api\/users\/\d+\/public$/) && method === 'GET') {
+      const id = url.pathname.split('/')[3];
+      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
+      const u = await env.DB.prepare('SELECT id, display_name, name, bio, avatar_url, website, verified, role FROM users WHERE id=?').bind(id).first();
+      if (!u) return json({ error: 'Not found' }, 404);
+      return json(u);
+    }
+
+    if (url.pathname === '/api/upload/avatar' && method === 'POST') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      try {
+        const form = await request.formData();
+        const file = form.get('file');
+        if (!file || !file.size) return json({ error: 'لا يوجد ملف' }, 400);
+        if (file.size > 2*1024*1024) return json({ error: 'الصورة كبيرة - حد أقصى 2MB' }, 400);
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return json({ error: 'نوع الصورة غير مسموح - JPG, PNG, WEBP فقط' }, 400);
+        const ext = file.name.split('.').pop() || 'jpg';
+        const key = `avatars/${user.id}-${Date.now()}.${ext}`;
+        await env.BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+        const avatarUrl = `/cdn/${key}`;
+        await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, user.id).run();
+        return json({ url: avatarUrl, success: true });
+      } catch(e){ return json({ error: 'فشل الرفع: ' + (e.message||'') }, 500); }
+    }
+
+    if (url.pathname === '/api/admin/users' && method === 'GET') {
+      const user = await getUserFromReq(request, env);
+      if (!user || user.role !== 'admin') return json({ error: 'Admin only' }, 403);
+      const users = await env.DB.prepare(`
+        SELECT u.id, u.email, u.name, u.display_name, u.bio, u.avatar_url, u.website, u.role, u.verified, u.is_publisher,
+        (SELECT COUNT(*) FROM books WHERE author_id=u.id) as books_count
+        FROM users u ORDER BY u.id DESC LIMIT 200
+      `).all();
+      return json(users.results);
     }
 
     return json({ error: 'Route not found: ' + url.pathname }, 404);
