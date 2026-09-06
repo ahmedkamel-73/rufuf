@@ -1,0 +1,19 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>رفع كتاب - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفع كتاب</h1><a href="publisher.html">العودة للوحة الناشر</a></header><main class="form-page"><h2>📚 رفع كتاب جديد</h2>
+<form id="book-form"><input id="title" placeholder="عنوان الكتاب" required><input id="author" placeholder="المؤلف"><textarea id="desc" placeholder="الوصف" rows="4"></textarea><label>غلاف الكتاب<input id="cover" type="file" accept="image/*"></label><label>ملف الكتاب PDF<input id="file" type="file" accept=".pdf,.epub"></label><button type="submit">رفع الكتاب</button></form><div id="status"></div></main>
+<script src="js/api.js"></script><script>
+document.getElementById('book-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const status=document.getElementById('status');
+  status.textContent='جاري الرفع...';
+  try{
+    let cover_url='', file_url='';
+    const cover=document.getElementById('cover').files[0];
+    const file=document.getElementById('file').files[0];
+    if(cover){ const up=await uploadFile(cover); cover_url=up.url; }
+    if(file){ const up=await uploadFile(file); file_url=up.url; }
+    const res=await apiPost('/api/books',{title: document.getElementById('title').value, author: document.getElementById('author').value, description: document.getElementById('desc').value, cover_url, file_url});
+    if(res.success){ status.textContent='✅ تم الرفع'; location.href='publisher.html'; } else status.textContent='❌ '+res.error;
+  }catch(err){ status.textContent='❌ '+err.message; }
+});
+</script></body></html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>القارئ - رفوف V6.2</title><link rel="stylesheet" href="css/style.css">
+<style>
+.ad-slot{ background:#111; border:1px dashed #ff6b00; padding:12px; margin:12px 0; border-radius:8px; text-align:center; min-height:60px }
+.ad-slot.publisher{ border-color:#22c55e; background:#0f1a0f }
+.ad-label{ font-size:11px; color:#888; margin-bottom:6px }
+.reader-layout{ display:grid; grid-template-columns:1fr 300px; gap:20px; max-width:1200px; margin:0 auto }
+@media(max-width:900px){ .reader-layout{ grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<header><h1>📖 رفوف - القارئ</h1><nav><a href="index.html">الرئيسية</a><a href="books.html">الكتب</a></nav></header>
+<main class="reader-layout">
+<div>
+<!-- V6.2 REFINED: إعلان المنصة العام -->
+<div id="ad-reader-platform" class="ad-slot"><div class="ad-label">إعلان المنصة</div><span>جاري التحميل...</span></div>
+
+<article id="book-view"><h2 id="book-title">جاري التحميل...</h2><p id="book-author"></p><img id="book-cover" style="max-width:300px"><div id="book-desc"></div><div id="book-file"></div></article>
+
+<!-- V6.2 REFINED: إعلان الناشر صاحب الكتاب -->
+<div id="ad-reader-publisher" class="ad-slot publisher"><div class="ad-label">إعلان الناشر</div><span>سيظهر إعلان ناشر هذا الكتاب هنا</span></div>
+</div>
+<aside>
+<div id="ad-sidebar-platform" class="ad-slot"><div class="ad-label">إعلان جانبي - المنصة</div></div>
+<div id="ad-sidebar-publisher" class="ad-slot publisher"><div class="ad-label">إعلان جانبي - الناشر</div></div>
+<div id="related"></div>
+</aside>
+</main>
+<script src="js/api.js"></script>
+<script src="js/ads.js"></script>
+<script src="js/reader.js"></script>
+</body>
+</html>

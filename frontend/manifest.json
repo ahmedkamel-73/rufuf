@@ -1,0 +1,9 @@
+{
+  "name":"رفوف - مكتبة رقمية",
+  "short_name":"رفوف",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#0a0a0a",
+  "theme_color":"#ff6b00",
+  "icons":[{"src":"https://via.placeholder.com/512/FF6B00/FFFFFF?text=R","sizes":"512x512","type":"image/png"}]
+}

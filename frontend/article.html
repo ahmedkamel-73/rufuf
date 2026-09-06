@@ -1,0 +1,11 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مقال - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفوف</h1></header><main style="max-width:800px;margin:0 auto;padding:20px"><h2 id="title"></h2><p id="author"></p><img id="cover" style="max-width:100%"><div id="content"></div></main>
+<script src="js/api.js"></script><script>
+const id=new URLSearchParams(location.search).get('id');
+fetch('/api/articles/'+id).then(r=>r.json()).then(a=>{
+  document.getElementById('title').textContent=a.title;
+  document.getElementById('author').textContent=a.author_name||'';
+  document.getElementById('content').innerHTML='<p>'+a.content.replace(/\n/g,'<br>')+'</p>';
+  if(a.cover_url) document.getElementById('cover').src=a.cover_url;
+});
+</script></body></html>

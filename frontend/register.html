@@ -1,0 +1,11 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تسجيل - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفوف</h1></header><main class="form-page"><h2>حساب جديد</h2>
+<form id="reg-form"><input id="name" placeholder="الاسم" required><input id="email" type="email" placeholder="البريد" required><input id="password" type="password" placeholder="كلمة المرور" required><button type="submit">تسجيل</button></form></main>
+<script src="js/api.js"></script><script>
+document.getElementById('reg-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const data={name: document.getElementById('name').value, email: document.getElementById('email').value, password: document.getElementById('password').value};
+  const res=await apiPost('/api/auth/register',data);
+  if(res.token){ localStorage.setItem('token',res.token); location.href='index.html'; } else alert(res.error);
+});
+</script></body></html>

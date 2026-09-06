@@ -1,0 +1,7 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المقالات - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>📝 المقالات</h1><nav><a href="index.html">الرئيسية</a></nav></header><main><div class="grid" id="grid"></div></main>
+<script src="js/api.js"></script><script>
+fetch('/api/articles').then(r=>r.json()).then(arts=>{
+  document.getElementById('grid').innerHTML=arts.map(a=>'<div class="card"><h4>'+a.title+'</h4><p>'+a.content.substring(0,120)+'...</p><a href="article.html?id='+a.id+'">قراءة</a></div>').join('');
+});
+</script></body></html>

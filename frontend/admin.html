@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الإدارة - V6.2 REFINED</title><link rel="stylesheet" href="css/style.css">
+<style>
+.req-card{ background:#111; border:1px solid #333; border-radius:10px; padding:15px; margin:10px 0 }
+.req-card.approved{ border-color:#22c55e } .req-card.rejected{ border-color:#ef4444 }
+.btn-approve{ background:#22c55e; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer }
+.btn-reject{ background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer }
+</style>
+</head>
+<body>
+<header><h1>👑 لوحة الإدارة - V6.2 REFINED</h1><nav><a href="index.html">الرئيسية</a><a href="admin-ads.html">إعلانات المنصة</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<main style="max-width:1100px;margin:0 auto;padding:20px">
+<section><h2>📊 الإحصائيات</h2><div id="stats"></div></section>
+
+<!-- V6.2 REFINED: 2. طلب انضمام كناشر - admin approval that changes role -->
+<section style="margin-top:30px">
+<h2>🧑‍💼 طلبات الانضمام كناشر - مع تغيير الدور تلقائياً</h2>
+<p style="color:#aaa;font-size:13px">V6.2: عند الموافقة يتم تنفيذ UPDATE users SET role='publisher', is_publisher=1 WHERE id=(SELECT user_id FROM publisher_requests WHERE id=?)</p>
+<div id="publisher-requests-list">جاري التحميل...</div>
+</section>
+
+<section><h2>📚 إدارة الكتب</h2><div id="books-admin"></div></section>
+<section><h2>📝 إدارة المقالات</h2><div id="articles-admin"></div></section>
+</main>
+<script src="js/api.js"></script>
+<script>
+async function loadRequests(){
+  const res=await apiGet('/api/publisher-requests');
+  const container=document.getElementById('publisher-requests-list');
+  if(!res||res.error){ container.innerHTML='<p>خطأ: '+(res?.error||'غير مصرح')+'</p>'; return; }
+  if(res.length===0){ container.innerHTML='<p>لا توجد طلبات</p>'; return; }
+  container.innerHTML=res.map(r=>'<div class="req-card '+r.status+'"><b>طلب #'+r.id+'</b> - user_id: '+r.user_id+' ('+r.email+')<br><b>الاسم:</b> '+r.name+'<br><b>السبب:</b> '+r.reason+'<br><b>نماذج:</b> '+ (r.samples||'') +'<br><b>الحالة:</b> <span style="color:'+(r.status==='approved'?'#22c55e':r.status==='rejected'?'#ef4444':'#f59e0b')+'">'+r.status+'</span><br><div style="margin-top:8px"><button class="btn-approve" onclick="handleRequest('+r.id+',\'approved\')">✅ موافقة وتحويل لناشر</button> <button class="btn-reject" onclick="handleRequest('+r.id+',\'rejected\')">❌ رفض</button></div></div>').join('');
+}
+async function handleRequest(id,status){
+  if(!confirm('تأكيد '+status+' للطلب #'+id+'؟'+(status==='approved'?' سيتم تغيير دور المستخدم إلى publisher':''))) return;
+  const res=await apiPut('/api/publisher-requests/'+id,{status});
+  if(res.success){ alert('تم '+status); loadRequests(); } else alert(res.error||'خطأ');
+}
+async function apiPut(url,data){
+  const token=localStorage.getItem('token');
+  const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)});
+  return r.json();
+}
+function logout(){ localStorage.clear(); location.href='login.html'; }
+loadRequests();
+</script>
+</body>
+</html>

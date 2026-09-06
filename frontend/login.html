@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دخول - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفوف</h1></header><main class="form-page"><h2>تسجيل الدخول</h2>
+<form id="login-form"><input id="email" type="email" placeholder="البريد" required><input id="password" type="password" placeholder="كلمة المرور" required><button type="submit">دخول</button></form><p>ليس لديك حساب؟ <a href="register.html">سجل الآن</a></p><p>👑 الأدمن: rufuf@pages.dev / 132000aA*</p></main>
+<script src="js/api.js"></script><script src="js/auth.js"></script>
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email=document.getElementById('email').value;
+  const password=document.getElementById('password').value;
+  const res=await apiPost('/api/auth/login',{email,password});
+  if(res.token){ localStorage.setItem('token',res.token); localStorage.setItem('user',JSON.stringify(res.user)); location.href=res.user.role==='admin'?'admin.html':res.user.role==='publisher'?'publisher.html':'index.html'; }
+  else alert(res.error||'خطأ');
+});
+</script></body></html>

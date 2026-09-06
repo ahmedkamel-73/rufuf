@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إعلاناتي - ناشر</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>إعلاناتي - V6.2 REFINED</h1><nav><a href="publisher.html">لوحة الناشر</a></nav></header><main style="max-width:900px;margin:0 auto;padding:20px">
+<h2>إضافة إعلان ناشر يظهر في reader.html مع إعلان المنصة</h2>
+<p style="color:#888">V6.2: إعلانك سيظهر في صفحة القارئ تحت إعلان المنصة عندما يكون الكتاب ملكك (owner_id)</p>
+<form id="ad-form"><input id="title" placeholder="عنوان الإعلان" required>
+<select id="placement" required>
+<option value="reader" selected>reader - صفحة القارئ (يظهر بجانب إعلان المنصة)</option><option value="books">books</option><option value="sidebar">sidebar</option>
+</select>
+<select id="type"><option value="image_link">image_link</option><option value="custom_html">custom_html</option></select>
+<input id="image_url" placeholder="رابط الصورة"><input id="link_url" placeholder="رابط عند الضغط">
+<textarea id="custom_html" placeholder="HTML مخصص" rows="4"></textarea>
+<button type="submit">إضافة إعلاني</button></form>
+<div id="ads-list"></div>
+</main>
+<script src="js/api.js"></script><script>
+document.getElementById('ad-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const data={title: title.value, placement: placement.value, type: type.value, image_url: image_url.value, link_url: link_url.value, custom_html: custom_html.value};
+  const res=await apiPost('/api/ads',data);
+  if(res.success) location.reload(); else alert(res.error);
+});
+async function loadAds(){
+  const token=localStorage.getItem('token');
+  const user=JSON.parse(localStorage.getItem('user')||'{}');
+  const ads=await fetch('/api/ads?owner_id='+user.id,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.json());
+  document.getElementById('ads-list').innerHTML=(ads||[]).map(a=>'<div class="card">'+a.title+' - '+a.placement+' <button onclick="delAd('+a.id+')">حذف</button></div>').join('');
+}
+async function delAd(id){ if(confirm('حذف؟')){ await apiDelete('/api/ads/'+id); loadAds(); } }
+loadAds();
+</script></body></html>

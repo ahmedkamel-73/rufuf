@@ -1,0 +1,27 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إعلانات المنصة - أدمن</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>إعلانات المنصة</h1><nav><a href="admin.html">لوحة الإدارة</a></nav></header><main style="max-width:900px;margin:0 auto;padding:20px">
+<h2>إضافة إعلان منصة (يدعم placement=reader)</h2>
+<form id="ad-form"><input id="title" placeholder="عنوان الإعلان" required>
+<select id="placement" required>
+<option value="home">home</option><option value="reader" selected>reader - صفحة القارئ</option><option value="books">books</option><option value="sidebar">sidebar</option>
+</select>
+<select id="type"><option value="image_link">image_link</option><option value="custom_html">custom_html</option></select>
+<input id="image_url" placeholder="رابط الصورة"><input id="link_url" placeholder="رابط عند الضغط">
+<textarea id="custom_html" placeholder="<div>إعلان HTML مخصص</div>" rows="4"></textarea>
+<button type="submit">إضافة إعلان منصة</button></form>
+<div id="ads-list"></div>
+</main>
+<script src="js/api.js"></script><script>
+document.getElementById('ad-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const data={title: title.value, placement: placement.value, type: type.value, image_url: image_url.value, link_url: link_url.value, custom_html: custom_html.value};
+  const res=await apiPost('/api/ads',data);
+  if(res.success) location.reload(); else alert(res.error);
+});
+async function loadAds(){
+  const ads=await apiGet('/api/ads');
+  document.getElementById('ads-list').innerHTML=ads.map(a=>'<div class="card">'+a.title+' - '+a.placement+' - <button onclick="delAd('+a.id+')">حذف</button></div>').join('');
+}
+async function delAd(id){ if(confirm('حذف؟')){ await apiDelete('/api/ads/'+id); loadAds(); } }
+loadAds();
+</script></body></html>

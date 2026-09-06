@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الناشر - V6.2 REFINED</title><link rel="stylesheet" href="css/style.css">
+<style>
+.inline-upload{ background:linear-gradient(135deg,#1a1a1a,#222); border:2px solid #ff6b00; border-radius:12px; padding:20px; margin:20px 0 }
+.inline-upload h2{ color:#ff6b00; margin-bottom:15px }
+.form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
+.form-row input, .form-row textarea{ padding:10px; border-radius:8px; border:1px solid #444; background:#111; color:#fff }
+.btn-orange{ background:#ff6b00; color:#fff; border:none; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:bold }
+.btn-orange:hover{ background:#ff7a18 }
+</style>
+</head>
+<body>
+<header><h1>لوحة الناشر - V6.2 REFINED</h1><nav><a href="index.html">الرئيسية</a><a href="publisher-ads.html">إعلاناتي</a><a href="upload-book.html">رفع كتاب (صفحة)</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<main style="max-width:1000px;margin:0 auto;padding:20px">
+<section><h2>📚 كتبي</h2><div id="my-books" class="grid"></div><a class="btn-orange" href="upload-book.html" style="display:inline-block;margin-top:10px;text-decoration:none">+ رفع كتاب جديد</a></section>
+
+<!-- V6.2 REFINED: 1. رفع المقالات من داخل لوحة الناشر (not separate page) -->
+<section class="inline-upload" id="article-upload-inline">
+<h2>📝 رفع مقال جديد - من داخل اللوحة</h2>
+<p style="color:#aaa;font-size:13px">V6.2 REFINED: الآن ترفع المقال مباشرة من هنا بدون الذهاب لصفحة منفصلة</p>
+<div class="form-row"><label>عنوان المقال</label><input id="article-title" placeholder="مثال: كيف تكتب رواية ناجحة"></div>
+<div class="form-row"><label>محتوى المقال</label><textarea id="article-content" rows="8" placeholder="اكتب محتوى المقال هنا..."></textarea></div>
+<div class="form-row"><label>صورة الغلاف (اختياري)</label><input id="article-cover" type="file" accept="image/*"></div>
+<button class="btn-orange" id="btn-upload-article" onclick="uploadArticleInline()">🚀 رفع المقال</button>
+<div id="article-upload-status" style="margin-top:10px;color:#22c55e"></div>
+</section>
+
+<section><h2>📝 مقالاتي</h2><div id="my-articles" class="grid"></div>
+<!-- تم إزالة رابط upload-article.html كتنقل منفصل، لكن الملف موجود كـ fallback -->
+<p style="color:#666;font-size:12px">ملاحظة: صفحة upload-article.html ما زالت موجودة كـ fallback لكن الرفع الأساسي من الأعلى ☝️</p>
+</section>
+
+<section><h2>💰 إعلاناتي</h2><a href="publisher-ads.html">إدارة إعلاناتي (placement reader مدعوم)</a></section>
+</main>
+<script src="js/api.js"></script>
+<script src="js/publisher.js"></script>
+<script>
+// V6.2 REFINED inline article upload logic
+async function uploadArticleInline(){
+  const btn=document.getElementById('btn-upload-article');
+  const status=document.getElementById('article-upload-status');
+  const title=document.getElementById('article-title').value.trim();
+  const content=document.getElementById('article-content').value.trim();
+  const coverFile=document.getElementById('article-cover').files[0];
+  if(!title||!content){ alert('العنوان والمحتوى مطلوبان'); return; }
+  btn.disabled=true; btn.textContent='جاري الرفع...';
+  try{
+    let cover_url='';
+    if(coverFile){
+      const up=await uploadFile(coverFile);
+      cover_url=up.url;
+    }
+    const res=await apiPost('/api/articles',{title,content,cover_url});
+    if(res.success){
+      status.textContent='✅ تم رفع المقال بنجاح! ID: '+res.id;
+      document.getElementById('article-title').value='';
+      document.getElementById('article-content').value='';
+      loadMyArticles();
+    } else status.textContent='❌ '+(res.error||'خطأ');
+  }catch(e){ status.textContent='❌ خطأ: '+e.message; }
+  btn.disabled=false; btn.textContent='🚀 رفع المقال';
+}
+function logout(){ localStorage.clear(); location.href='login.html'; }
+</script>
+</body>
+</html>

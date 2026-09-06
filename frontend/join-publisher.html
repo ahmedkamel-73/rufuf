@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>انضمام كناشر - رفوف</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفوف - انضمام كناشر</h1></header><main class="form-page"><h2>طلب انضمام كناشر</h2>
+<form id="join-form"><input id="name" placeholder="الاسم الكامل" required><textarea id="reason" placeholder="لماذا تريد أن تصبح ناشر؟" required rows="4"></textarea><textarea id="samples" placeholder="روابط أو عناوين أعمال سابقة" rows="3"></textarea><button type="submit">إرسال الطلب</button></form><div id="status"></div></main>
+<script src="js/api.js"></script>
+<script>
+document.getElementById('join-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const data={name: document.getElementById('name').value, reason: document.getElementById('reason').value, samples: document.getElementById('samples').value};
+  const res=await apiPost('/api/publisher-requests',data);
+  if(res.success){ document.getElementById('status').innerHTML='<p style="color:green">✅ تم إرسال الطلب، سيتم مراجعته من الأدمن وتحويل دورك تلقائيا عند الموافقة</p>'; }
+  else alert(res.error||'خطأ');
+});
+</script></body></html>

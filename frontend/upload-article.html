@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>رفع مقال - fallback</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header><h1>رفع مقال - صفحة منفصلة (Fallback) - V6.2</h1><p style="color:#888">هذه الصفحة موجودة كـ fallback، لكن في V6.2 الرفع الأساسي من داخل publisher.html</p></header><main class="form-page"><h2>📝 رفع مقال</h2>
+<form id="art-form"><input id="title" placeholder="العنوان" required><textarea id="content" placeholder="المحتوى" rows="8" required></textarea><input id="cover" type="file" accept="image/*"><button type="submit">رفع</button></form></main>
+<script src="js/api.js"></script><script>
+document.getElementById('art-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  let cover_url='';
+  const file=document.getElementById('cover').files[0];
+  if(file){ const up=await uploadFile(file); cover_url=up.url; }
+  const res=await apiPost('/api/articles',{title: document.getElementById('title').value, content: document.getElementById('content').value, cover_url});
+  if(res.success) location.href='publisher.html'; else alert(res.error);
+});
+</script></body></html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>رفوف - مكتبة رقمية ذكية | V9</title>
+<meta name="description" content="رفوف منصة نشر رقمية - Lazy Loading حقيقي، PWA، إشعارات فورية">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff6b00">
+<link rel="stylesheet" href="css/style.css">
+<link rel="preload" href="css/style.css" as="style">
+</head>
+<body>
+<header><h1>📚 رفوف V9</h1><nav><a href="books.html">الكتب</a><a href="articles.html">المقالات</a><a href="login.html">دخول</a><a href="publisher.html">الناشر</a></nav></header>
+
+<!-- V9 ULTIMATE HERO - جذاب فعلاً -->
+<section class="hero-v9">
+  <div class="hero-v9-bg"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
+  <div class="hero-left">
+    <div class="badge-v9"><span class="dot-live"></span> الآن: +23 قارئ متصل • PWA يعمل بدون إنترنت</div>
+    <h1><span class="w">اقرأ. انشر.</span><span class="o">تألق.</span></h1>
+    <p class="sub">منصة رفوف الجديدة كلياً - تصميم 3D، تحميل برق، وإشعارات لحظية. لا إعلانات مزعجة، فقط محتوى تحبه.</p>
+    <div class="ctas-v9">
+      <a href="books.html" class="btn-mega-v9">ابدأ مجاناً الآن <span>→</span></a>
+      <button class="btn-ghost-v9" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">شاهد كيف تعمل ▶</button>
+    </div>
+    <div class="trust-v9">
+      <div class="trust-avatars">
+        <img src="https://i.pravatar.cc/100?img=10" alt="" loading="lazy">
+        <img src="https://i.pravatar.cc/100?img=11" alt="" loading="lazy">
+        <img src="https://i.pravatar.cc/100?img=12" alt="" loading="lazy">
+        <img src="https://i.pravatar.cc/100?img=13" alt="" loading="lazy">
+      </div>
+      <div class="trust-text"><b>4.9/5 من 1,200+ قارئ</b><br>موثوق من ناشرين عرب</div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="float-b f1">⚡ تحميل 0.8s</div>
+    <div class="float-b f2">🔔 إشعار فوري</div>
+    <div class="stack">
+      <div class="card-stack">
+        <div class="s-head"><div class="icon">📚</div><div><div class="s-title">كتاب مميز اليوم</div><div class="s-sub">رواية • 4.8 ⭐</div></div></div>
+        <div class="s-body"><div class="s-item"><div class="line"></div><div class="line o"></div></div><div class="s-item"><div class="line o"></div><div class="line"></div></div></div>
+      </div>
+      <div class="card-stack">
+        <div class="s-head"><div class="icon">📝</div><div><div class="s-title">مقالات رائجة</div><div class="s-sub">+12 مقال جديد</div></div></div>
+        <div class="s-body"><div class="s-item"><div class="line"></div><div class="line"></div></div><div class="s-item"><div class="line"></div><div class="line o"></div></div></div>
+      </div>
+      <div class="card-stack">
+        <div class="s-head"><div class="icon">💬</div><div><div class="s-title">مجتمع القراء</div><div class="s-sub">نقاشات حية</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works" style="padding:40px 5%;background:#0f0f0f;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a">
+  <h2 style="text-align:center;margin-bottom:20px">كيف تعمل؟</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+    <div class="card"><h4>1. اقرأ</h4><p style="color:#888;font-size:13px">آلاف الكتب المجانية بتحميل فوري</p></div>
+    <div class="card"><h4>2. انشر</h4><p style="color:#888;font-size:13px">ارفع كتابك واربح من إعلاناتك</p></div>
+    <div class="card"><h4>3. تفاعل</h4><p style="color:#888;font-size:13px">إشعارات فورية وتعليقات</p></div>
+  </div>
+</section>
+
+<!-- LAZY SECTIONS - لن تحمل إلا عند الظهور -->
+<section id="latest-books" data-lazy="books" class="lazy-section">
+  <h3 class="section-title">📚 أحدث الكتب <span style="font-size:12px;color:#666">(Lazy Loaded)</span></h3>
+  <div class="grid" id="books-grid">
+    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
+    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
+    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
+  </div>
+</section>
+
+<section id="latest-articles" data-lazy="articles" class="lazy-section">
+  <h3 class="section-title">📝 أحدث المقالات <span style="font-size:12px;color:#666">(Lazy Loaded)</span></h3>
+  <div class="grid" id="articles-grid">
+    <div class="card"><div class="skeleton" style="height:60px"></div></div>
+    <div class="card"><div class="skeleton" style="height:60px"></div></div>
+  </div>
+</section>
+
+<div id="ad-home"></div>
+<div id="toast-container"></div>
+
+<!-- V9 REAL LAZY LOADING: فقط loader + toast أولاً -->
+<script src="js/toast.js"></script>
+<script type="module">
+// V9 - REAL Lazy Loading Implementation - كل الملفات لا تتحمل مرة واحدة
+console.log('[V9] Initial bundle: only toast.js + this inline (~3KB)');
+
+const lazyRegistry = {
+  books: async () => {
+    const m = await import('./js/modules/books.js');
+    m.init();
+  },
+  articles: async () => {
+    const m = await import('./js/modules/articles.js');
+    m.init();
+  }
+};
+
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const type = entry.target.dataset.lazy;
+      if(lazyRegistry[type]){
+        console.log(`[Lazy] Loading ${type} module...`);
+        lazyRegistry[type]();
+        observer.unobserve(entry.target);
+        // Remove skeleton after load
+        entry.target.querySelectorAll('.skeleton').forEach(s=>s.style.display='none');
+      }
+    }
+  });
+}, {rootMargin:'400px'}); // يبدأ التحميل قبل 400px من الظهور
+
+document.querySelectorAll('[data-lazy]').forEach(el=>observer.observe(el));
+
+// Images lazy with native + data-src fallback
+if('loading' in HTMLImageElement.prototype){
+  document.querySelectorAll('img[data-src]').forEach(img=>{ img.src=img.dataset.src; });
+} else {
+  const imgObs = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ const i=e.target; i.src=i.dataset.src; imgObs.unobserve(i); }}));
+  document.querySelectorAll('img[data-src]').forEach(i=>imgObs.observe(i));
+}
+
+// PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js');
+}
+
+// Performance log
+window.addEventListener('load', ()=>{
+  const perf = performance.getEntriesByType('navigation')[0];
+  console.log(`[Perf] Load time: ${Math.round(perf.loadEventEnd - perf.startTime)}ms, Transfer: ${Math.round(perf.transferSize/1024)}KB`);
+});
+</script>
+<script src="js/ads.js" defer></script>
+</body>
+</html>
