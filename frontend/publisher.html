@@ -1,68 +1,105 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة الناشر - V6.2 REFINED</title><link rel="stylesheet" href="css/style.css">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الناشر - رفوف</title>
+<link rel="stylesheet" href="css/style.css">
 <style>
-.inline-upload{ background:linear-gradient(135deg,#1a1a1a,#222); border:2px solid #ff6b00; border-radius:12px; padding:20px; margin:20px 0 }
-.inline-upload h2{ color:#ff6b00; margin-bottom:15px }
-.form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
-.form-row input, .form-row textarea{ padding:10px; border-radius:8px; border:1px solid #444; background:#111; color:#fff }
-.btn-orange{ background:#ff6b00; color:#fff; border:none; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:bold }
-.btn-orange:hover{ background:#ff7a18 }
+.pub-wrap{max-width:1100px;margin:0 auto;padding:20px}
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;text-decoration:none;display:block;transition:0.2s}
+.action-card:hover{border-color:#ff6b00;transform:translateY(-2px)}
+.action-card b{font-size:40px;display:block;margin-bottom:8px}
+.action-card span{color:#fff;font-weight:700}
+.action-card small{color:#888;display:block;margin-top:4px;font-size:12px}
+.action-card.primary{background:linear-gradient(135deg,#ff6b00,#ff8c00);border-color:#ff6b00}
+.action-card.primary span,.action-card.primary small{color:#fff}
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:20px 0}
+.form-card h3{margin-bottom:16px;color:#ff6b00}
+.input{width:100%;background:#0f0f0f;border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;margin-bottom:12px}
+.btn{padding:10px 20px;border-radius:100px;border:none;cursor:pointer;font-weight:700}
+.btn-orange{background:#ff6b00;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
 </style>
 </head>
 <body>
-<header><h1>لوحة الناشر - V6.2 REFINED</h1><nav><a href="index.html">الرئيسية</a><a href="publisher-ads.html">إعلاناتي</a><a href="upload-book.html">رفع كتاب (صفحة)</a><a href="#" onclick="logout()">خروج</a></nav></header>
-<main style="max-width:1000px;margin:0 auto;padding:20px">
-<section><h2>📚 كتبي</h2><div id="my-books" class="grid"></div><a class="btn-orange" href="upload-book.html" style="display:inline-block;margin-top:10px;text-decoration:none">+ رفع كتاب جديد</a></section>
+<header><h1>📚 رفوف - الناشر</h1><nav><a href="index.html">الرئيسية</a><a href="profile.html">بروفايلي</a><a href="publisher-ads.html">إعلاناتي</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<div class="pub-wrap">
+  <h2 id="welcome">مرحباً، ناشر 👋</h2>
+  <div class="quick-actions">
+    <a href="upload-book.html" class="action-card primary"><b>📚</b><span>ارفع كتاب جديد</span><small>PDF أو EPUB + غلاف</small></a>
+    <a href="#article-section" class="action-card"><b>📝</b><span>اكتب مقالة</span><small>انشر مقال مباشرة</small></a>
+    <a href="profile.html" class="action-card"><b>👤</b><span>بروفايلي</span><small>صورتك ونبذتك</small></a>
+    <a href="publisher-ads.html" class="action-card"><b>💰</b><span>أرباحي</span><small>إعلاناتك</small></a>
+  </div>
 
-<!-- V6.2 REFINED: 1. رفع المقالات من داخل لوحة الناشر (not separate page) -->
-<section class="inline-upload" id="article-upload-inline">
-<h2>📝 رفع مقال جديد - من داخل اللوحة</h2>
-<p style="color:#aaa;font-size:13px">V6.2 REFINED: الآن ترفع المقال مباشرة من هنا بدون الذهاب لصفحة منفصلة</p>
-<div class="form-row"><label>عنوان المقال</label><input id="article-title" placeholder="مثال: كيف تكتب رواية ناجحة"></div>
-<div class="form-row"><label>محتوى المقال</label><textarea id="article-content" rows="8" placeholder="اكتب محتوى المقال هنا..."></textarea></div>
-<div class="form-row"><label>صورة الغلاف (اختياري)</label><input id="article-cover" type="file" accept="image/*"></div>
-<button class="btn-orange" id="btn-upload-article" onclick="uploadArticleInline()">🚀 رفع المقال</button>
-<div id="article-upload-status" style="margin-top:10px;color:#22c55e"></div>
-</section>
+  <div class="form-card" id="article-section">
+    <h3>📝 كتابة مقالة جديدة - سريعة</h3>
+    <input id="article-title" class="input" placeholder="عنوان المقال">
+    <textarea id="article-content" class="input" rows="6" placeholder="اكتب محتوى المقال هنا..."></textarea>
+    <input id="article-cover" type="file" accept="image/*" class="input">
+    <button class="btn btn-orange" onclick="uploadArticle()">نشر المقال الآن 🚀</button>
+    <div id="article-status" style="margin-top:10px"></div>
+  </div>
 
-<section><h2>📝 مقالاتي</h2><div id="my-articles" class="grid"></div>
-<!-- تم إزالة رابط upload-article.html كتنقل منفصل، لكن الملف موجود كـ fallback -->
-<p style="color:#666;font-size:12px">ملاحظة: صفحة upload-article.html ما زالت موجودة كـ fallback لكن الرفع الأساسي من الأعلى ☝️</p>
-</section>
-
-<section><h2>💰 إعلاناتي</h2><a href="publisher-ads.html">إدارة إعلاناتي (placement reader مدعوم)</a></section>
-</main>
+  <h3>📚 كتبي المنشورة</h3>
+  <div id="my-books" class="grid"><p style="color:#666">جاري التحميل...</p></div>
+  <h3 style="margin-top:30px">📝 مقالاتي</h3>
+  <div id="my-articles" class="grid"><p style="color:#666">جاري التحميل...</p></div>
+</div>
 <script src="js/api.js"></script>
-<script src="js/publisher.js"></script>
+<script src="js/auth.js"></script>
 <script>
-// V6.2 REFINED inline article upload logic
-async function uploadArticleInline(){
-  const btn=document.getElementById('btn-upload-article');
-  const status=document.getElementById('article-upload-status');
+async function loadMyContent(){
+  try{
+    const user = getUser(); if(!user) { location.href='login.html'; return; }
+    document.getElementById('welcome').textContent = `مرحباً، ${user.display_name||user.name||user.email} 👋`;
+    const books = await apiGet('/api/books?author_id='+user.id).catch(()=>[]).then(r=>Array.isArray(r)?r:[]);
+    const myBooks = books.length ? books : await apiGet('/api/books').then(all=>all.filter(b=>b.author_id==user.id)).catch(()=>[]);
+    document.getElementById('my-books').innerHTML = myBooks.length ? myBooks.map(b=>`<div class="card"><h4>${b.title}</h4><small>${b.author||''}</small><br><a href="reader.html?id=${b.id}" style="color:#ff6b00">اقرأ →</a></div>`).join('') : '<p style="color:#666">لم تنشر أي كتب بعد. <a href="upload-book.html" style="color:#ff6b00">ارفع أول كتاب</a></p>';
+    const articles = await apiGet('/api/articles?author_id='+user.id).catch(()=>[]).then(r=>Array.isArray(r)?r:[]);
+    const myArticles = articles.length ? articles : await apiGet('/api/articles').then(all=>all.filter(a=>a.author_id==user.id)).catch(()=>[]);
+    document.getElementById('my-articles').innerHTML = myArticles.length ? myArticles.map(a=>`<div class="card"><h4>${a.title}</h4><a href="article.html?id=${a.id}" style="color:#ff6b00">اقرأ →</a></div>`).join('') : '<p style="color:#666">لم تنشر أي مقالات بعد.</p>';
+  }catch(e){ console.log(e); }
+}
+async function uploadArticle(){
   const title=document.getElementById('article-title').value.trim();
   const content=document.getElementById('article-content').value.trim();
   const coverFile=document.getElementById('article-cover').files[0];
   if(!title||!content){ alert('العنوان والمحتوى مطلوبان'); return; }
-  btn.disabled=true; btn.textContent='جاري الرفع...';
+  document.getElementById('article-status').textContent='جاري النشر...';
   try{
     let cover_url='';
-    if(coverFile){
-      const up=await uploadFile(coverFile);
-      cover_url=up.url;
-    }
+    if(coverFile){ const up=await uploadFile(coverFile); cover_url=up.url; }
     const res=await apiPost('/api/articles',{title,content,cover_url});
-    if(res.success){
-      status.textContent='✅ تم رفع المقال بنجاح! ID: '+res.id;
-      document.getElementById('article-title').value='';
-      document.getElementById('article-content').value='';
-      loadMyArticles();
-    } else status.textContent='❌ '+(res.error||'خطأ');
-  }catch(e){ status.textContent='❌ خطأ: '+e.message; }
-  btn.disabled=false; btn.textContent='🚀 رفع المقال';
+    if(res.id||res.success){ document.getElementById('article-status').textContent='✅ تم نشر المقال!'; document.getElementById('article-title').value=''; document.getElementById('article-content').value=''; loadMyContent(); }
+    else document.getElementById('article-status').textContent='❌ '+(res.error||'خطأ');
+  }catch(e){ document.getElementById('article-status').textContent='❌ '+e.message; }
 }
 function logout(){ localStorage.clear(); location.href='login.html'; }
+loadMyContent();
 </script>
-</body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
