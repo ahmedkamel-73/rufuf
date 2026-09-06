@@ -2,19 +2,22 @@ name = "rufuf"
 main = "worker/src/index.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
+
 [assets]
 directory = "./frontend"
 not_found_handling = "single-page-application"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "rufuf-db"
 database_id = "b0f1b3a2-4e8a-4a3c-9f2d-123456789abc"
+
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "rufuf-storage"
+
 [vars]
 ENV = "production"
-JWT_SECRET_FALLBACK = "Rufuf_Super_Secret_2025_@AhmedKamel_73!_Fallback_123456789"
-JWT_SECRET = "Rufuf_Super_Secret_2025_@AhmedKamel_73!"
+
 [observability]
 enabled = true
