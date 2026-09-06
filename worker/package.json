@@ -1,0 +1,9 @@
+{
+  "name": "rufuf-worker",
+  "version": "6.2.0",
+  "type": "module",
+  "description": "Rufuf V6.2 FINAL REFINED Worker",
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  }
+}
