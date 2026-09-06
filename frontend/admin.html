@@ -1,50 +1,111 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة الإدارة - V6.2 REFINED</title><link rel="stylesheet" href="css/style.css">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الإدارة - رفوف</title>
+<link rel="stylesheet" href="css/style.css">
 <style>
-.req-card{ background:#111; border:1px solid #333; border-radius:10px; padding:15px; margin:10px 0 }
-.req-card.approved{ border-color:#22c55e } .req-card.rejected{ border-color:#ef4444 }
-.btn-approve{ background:#22c55e; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer }
-.btn-reject{ background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer }
+.admin-wrap{max-width:1200px;margin:0 auto;padding:20px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+.stat-card b{font-size:28px;display:block;color:#ff6b00}
+.stat-card span{color:#888;font-size:13px}
+.section{margin-top:40px}
+.table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
+.table th,.table td{padding:12px;text-align:right;border-bottom:1px solid var(--border);font-size:13px}
+.table th{color:#888;font-weight:600;background:#0f0f0f}
+.btn{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-size:12px}
+.btn-approve{background:#22c55e;color:#fff} .btn-reject{background:#ef4444;color:#fff} .btn-view{background:#333;color:#fff}
+.tabs{display:flex;gap:8px;margin:20px 0}
+.tab{padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:#888;cursor:pointer}
+.tab.active{background:#fff;color:#000;border-color:#fff}
+.req-card{background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 0;display:flex;gap:16px;align-items:center}
+.req-avatar{width:48px;height:48px;border-radius:50%;background:#222;display:grid;place-items:center;overflow:hidden}
 </style>
 </head>
 <body>
-<header><h1>👑 لوحة الإدارة - V6.2 REFINED</h1><nav><a href="index.html">الرئيسية</a><a href="admin-ads.html">إعلانات المنصة</a><a href="#" onclick="logout()">خروج</a></nav></header>
-<main style="max-width:1100px;margin:0 auto;padding:20px">
-<section><h2>📊 الإحصائيات</h2><div id="stats"></div></section>
-
-<!-- V6.2 REFINED: 2. طلب انضمام كناشر - admin approval that changes role -->
-<section style="margin-top:30px">
-<h2>🧑‍💼 طلبات الانضمام كناشر - مع تغيير الدور تلقائياً</h2>
-<p style="color:#aaa;font-size:13px">V6.2: عند الموافقة يتم تنفيذ UPDATE users SET role='publisher', is_publisher=1 WHERE id=(SELECT user_id FROM publisher_requests WHERE id=?)</p>
-<div id="publisher-requests-list">جاري التحميل...</div>
-</section>
-
-<section><h2>📚 إدارة الكتب</h2><div id="books-admin"></div></section>
-<section><h2>📝 إدارة المقالات</h2><div id="articles-admin"></div></section>
-</main>
+<header><h1>📚 رفوف - لوحة الإدارة</h1><nav><a href="index.html">الرئيسية</a><a href="admin-ads.html">الإعلانات</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<div class="admin-wrap">
+  <h2>مرحباً، أدمن 👑</h2>
+  <div class="stats-grid" id="statsGrid"><div class="stat-card"><b>...</b><span>جاري التحميل</span></div></div>
+  <div class="tabs"><button class="tab active" data-tab="requests">طلبات الناشرين</button><button class="tab" data-tab="users">المستخدمين</button><button class="tab" data-tab="books">الكتب</button><button class="tab" data-tab="articles">المقالات</button></div>
+  <div id="tab-requests" class="tab-content"><div id="requestsList">جاري التحميل...</div></div>
+  <div id="tab-users" class="tab-content" style="display:none"><table class="table" id="usersTable"><thead><tr><th>الناشر</th><th>البريد</th><th>الدور</th><th>كتب</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
+  <div id="tab-books" class="tab-content" style="display:none"><div id="booksList"></div></div>
+  <div id="tab-articles" class="tab-content" style="display:none"><div id="articlesList"></div></div>
+</div>
 <script src="js/api.js"></script>
 <script>
+async function loadStats(){
+  try{
+    const [books, articles, users, requests] = await Promise.all([
+      apiGet('/api/books').then(r=>r.length||0).catch(()=>0),
+      apiGet('/api/articles').then(r=>r.length||0).catch(()=>0),
+      apiGet('/api/admin/users').then(r=>r.length||0).catch(()=>0),
+      apiGet('/api/publisher-requests').then(r=>r.filter(x=>x.status==='pending').length||0).catch(()=>0)
+    ]);
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><b>${books}</b><span>إجمالي الكتب</span></div>
+      <div class="stat-card"><b>${articles}</b><span>إجمالي المقالات</span></div>
+      <div class="stat-card"><b>${users}</b><span>إجمالي المستخدمين</span></div>
+      <div class="stat-card"><b style="color:${requests>0?'#f59e0b':'#22c55e'}">${requests}</b><span>طلبات معلقة</span></div>
+    `;
+  }catch{}
+}
 async function loadRequests(){
-  const res=await apiGet('/api/publisher-requests');
-  const container=document.getElementById('publisher-requests-list');
-  if(!res||res.error){ container.innerHTML='<p>خطأ: '+(res?.error||'غير مصرح')+'</p>'; return; }
-  if(res.length===0){ container.innerHTML='<p>لا توجد طلبات</p>'; return; }
-  container.innerHTML=res.map(r=>'<div class="req-card '+r.status+'"><b>طلب #'+r.id+'</b> - user_id: '+r.user_id+' ('+r.email+')<br><b>الاسم:</b> '+r.name+'<br><b>السبب:</b> '+r.reason+'<br><b>نماذج:</b> '+ (r.samples||'') +'<br><b>الحالة:</b> <span style="color:'+(r.status==='approved'?'#22c55e':r.status==='rejected'?'#ef4444':'#f59e0b')+'">'+r.status+'</span><br><div style="margin-top:8px"><button class="btn-approve" onclick="handleRequest('+r.id+',\'approved\')">✅ موافقة وتحويل لناشر</button> <button class="btn-reject" onclick="handleRequest('+r.id+',\'rejected\')">❌ رفض</button></div></div>').join('');
+  const res = await apiGet('/api/publisher-requests'); const c=document.getElementById('requestsList');
+  if(!res || res.error){ c.innerHTML='<p>خطأ</p>'; return; }
+  if(res.length===0){ c.innerHTML='<p style="color:#666">لا توجد طلبات حالياً - المنصة نظيفة</p>'; return; }
+  c.innerHTML = res.map(r=>`
+    <div class="req-card"><div class="req-avatar">${r.avatar_url?`<img src="${r.avatar_url}" style="width:100%;height:100%;object-fit:cover">`: (r.name||'U').charAt(0)}</div>
+    <div style="flex:1"><b>${r.name}</b> - ${r.email}<br><small style="color:#888">${r.reason||''}</small><br><small style="color:${r.status==='pending'?'#f59e0b':r.status==='approved'?'#22c55e':'#ef4444'}">${r.status}</small></div>
+    <div>${r.status==='pending'?`<button class="btn btn-approve" onclick="handleReq(${r.id},'approved')">موافقة</button> <button class="btn btn-reject" onclick="handleReq(${r.id},'rejected')">رفض</button>`:`<span style="color:#666">${r.status}</span>`}</div></div>
+  `).join('');
 }
-async function handleRequest(id,status){
-  if(!confirm('تأكيد '+status+' للطلب #'+id+'؟'+(status==='approved'?' سيتم تغيير دور المستخدم إلى publisher':''))) return;
-  const res=await apiPut('/api/publisher-requests/'+id,{status});
-  if(res.success){ alert('تم '+status); loadRequests(); } else alert(res.error||'خطأ');
+async function loadUsers(){
+  const res = await apiGet('/api/admin/users').catch(()=>[]);
+  const tbody = document.querySelector('#usersTable tbody');
+  if(!res.length){ tbody.innerHTML='<tr><td colspan=5 style="color:#666">لا يوجد مستخدمين</td></tr>'; return; }
+  tbody.innerHTML = res.map(u=>`
+    <tr><td style="display:flex;gap:8px;align-items:center"><div style="width:32px;height:32px;border-radius:50%;background:#222;display:grid;place-items:center;overflow:hidden">${u.avatar_url?`<img src="${u.avatar_url}" style="width:100%;height:100%">`:u.display_name?.charAt(0)||'U'}</div><div><b>${u.display_name||u.name||''}</b><br><small style="color:#888">${u.bio?u.bio.slice(0,30):''}</small></div></td><td>${u.email}</td><td><span style="background:${u.role==='admin'?'#ff6b00':u.role==='publisher'?'#7c3aed':'#333'};color:#fff;padding:2px 8px;border-radius:100px;font-size:11px">${u.role}</span> ${u.verified?'✔':''}</td><td>${u.books_count||0}</td><td><a class="btn btn-view" href="author.html?id=${u.id}">عرض</a></td></tr>
+  `).join('');
 }
-async function apiPut(url,data){
-  const token=localStorage.getItem('token');
-  const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)});
-  return r.json();
+async function handleReq(id,status){
+  if(!confirm(status==='approved'?'موافقة وتحويل لناشر موثق؟':'رفض الطلب؟')) return;
+  const r = await fetch('/api/publisher-requests/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({status})}).then(x=>x.json());
+  if(r.success){ loadRequests(); loadStats(); } else alert(r.error);
 }
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');
+    document.getElementById('tab-'+t.dataset.tab).style.display='block';
+    if(t.dataset.tab==='users') loadUsers();
+  });
+});
 function logout(){ localStorage.clear(); location.href='login.html'; }
-loadRequests();
+loadStats(); loadRequests();
 </script>
-</body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
