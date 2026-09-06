@@ -10,19 +10,11 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "rufuf-db"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "f02c95c7-5467-4926-8d7a-1b018285869f"
 
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "rufuf-storage"
-
-[[durable_objects.bindings]]
-name = "FORUM"
-class_name = "ForumRoom"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["ForumRoom"]
 
 [vars]
 ENV = "production"
