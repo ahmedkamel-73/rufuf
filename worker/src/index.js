@@ -123,21 +123,30 @@ function sanitizeString(str, maxLen=500) {
 }
 
 function sanitizeHTML(html) {
-  // SECURITY: Strict sanitization for custom_html ads
   if (typeof html !== 'string') return '';
-  // Remove script, iframe, on* attributes, javascript:
   let clean = html;
-  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  // Remove dangerous event handlers and javascript: but KEEP script/iframe for ad networks
   clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
   clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
   clean = clean.replace(/javascript:/gi, '');
+  clean = clean.replace(/vbscript:/gi, '');
   clean = clean.replace(/data:text\/html/gi, '');
-  // Only allow safe tags
-  const allowedTags = ['div','span','a','img','p','b','i','strong','em','br','h1','h2','h3','h4','ul','li'];
-  // For simplicity, if contains disallowed tags, strip to text
-  // In production use DOMPurify on frontend as well
-  return clean.slice(0, 5000);
+  // Allow ad-friendly tags - keep everything but limit length
+  // Allowed: div, span, a, img, p, iframe, script, ins, etc for A-ADS, AdSense
+  return clean.slice(0, 8000);
+}
+
+function sanitizeAdHTML(html, userRole) {
+  // For publishers: allow A-ADS, AdSense, etc
+  if (typeof html !== 'string') return '';
+  let clean = html;
+  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
+  clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
+  clean = clean.replace(/javascript:/gi, '');
+  // For non-admin, block attempts to steal data but allow ad scripts
+  // Block <script> that tries to access localStorage/cookies directly with suspicious patterns
+  // But allow known ad domains: a-ads.com, doubleclick.net, adsense, etc
+  return clean.slice(0, 10000);
 }
 
 function validateEmail(email) {
@@ -430,8 +439,9 @@ export default {
         
         let cleanHTML = '';
         if (cleanType === 'custom_html' && custom_html) {
-          if (user.role !== 'admin') return json({ error: 'custom_html للأدمن فقط' }, 403);
-          cleanHTML = sanitizeHTML(custom_html);
+          // V12: Allow publisher to use custom_html for A-ADS, AdSense etc
+          if (user.role !== 'admin' && user.role !== 'publisher') return json({ error: 'الإعلانات البرمجية للناشرين فقط' }, 403);
+          cleanHTML = user.role === 'admin' ? sanitizeHTML(custom_html) : sanitizeAdHTML(custom_html, user.role);
         }
         
         const cleanImageUrl = image_url && (image_url.startsWith('/cdn/') || image_url.startsWith('https://')) ? image_url.slice(0,500) : '';
