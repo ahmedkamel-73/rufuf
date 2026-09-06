@@ -1,140 +1,141 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>رفوف - مكتبة رقمية ذكية | V9</title>
-<meta name="description" content="رفوف منصة نشر رقمية - Lazy Loading حقيقي، PWA، إشعارات فورية">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>رفوف - منصة النشر والقراءة العربية</title>
+<meta name="description" content="رفوف منصة عربية للنشر الرقمي. اقرأ آلاف الكتب والمقالات، أو انشر كتابك واجني أرباحك من إعلاناتك الخاصة.">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff6b00">
+<meta name="theme-color" content="#0a0a0a">
 <link rel="stylesheet" href="css/style.css">
-<link rel="preload" href="css/style.css" as="style">
 </head>
 <body>
-<header><h1>📚 رفوف V9</h1><nav><a href="books.html">الكتب</a><a href="articles.html">المقالات</a><a href="login.html">دخول</a><a href="publisher.html">الناشر</a></nav></header>
+<header>
+  <h1><a href="/" style="text-decoration:none;color:inherit">📚 رفوف</a></h1>
+  <nav>
+    <a href="books.html">الكتب</a>
+    <a href="articles.html">المقالات</a>
+    <a href="login.html">دخول</a>
+    <a href="join-publisher.html" style="background:#ff6b00;color:#fff;padding:8px 16px;border-radius:6px">انضم كناشر</a>
+  </nav>
+</header>
 
-<!-- V9 ULTIMATE HERO - جذاب فعلاً -->
-<section class="hero-v9">
-  <div class="hero-v9-bg"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
-  <div class="hero-left">
-    <div class="badge-v9"><span class="dot-live"></span> الآن: +23 قارئ متصل • PWA يعمل بدون إنترنت</div>
-    <h1><span class="w">اقرأ. انشر.</span><span class="o">تألق.</span></h1>
-    <p class="sub">منصة رفوف الجديدة كلياً - تصميم 3D، تحميل برق، وإشعارات لحظية. لا إعلانات مزعجة، فقط محتوى تحبه.</p>
-    <div class="ctas-v9">
-      <a href="books.html" class="btn-mega-v9">ابدأ مجاناً الآن <span>→</span></a>
-      <button class="btn-ghost-v9" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">شاهد كيف تعمل ▶</button>
+<!-- HERO احترافي ونظيف -->
+<section style="padding:90px 6% 70px; max-width:1200px; margin:0 auto; display:grid; grid-template-columns:1.2fr 0.8fr; gap:40px; align-items:center">
+  <div>
+    <h1 style="font-size:48px; line-height:1.15; margin:0 0 18px; font-weight:800; letter-spacing:-1px">
+      منصة النشر<br><span style="color:#ff6b00">التي تمنحك الحرية.</span>
+    </h1>
+    <p style="font-size:18px; line-height:1.7; color:#999; margin:0 0 32px; max-width:520px">
+      في رفوف، أنت لا تقرأ فقط. تكتشف كتبًا أصيلة، تنشر أعمالك بلا وسيط، وتحتفظ بأرباح إعلاناتك كاملة داخل كتبك ومقالاتك.
+    </p>
+    <div style="display:flex; gap:12px; flex-wrap:wrap">
+      <a href="books.html" style="background:#fff;color:#000;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">استكشف المكتبة</a>
+      <a href="join-publisher.html" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none">ابدأ النشر</a>
     </div>
-    <div class="trust-v9">
-      <div class="trust-avatars">
-        <img src="https://i.pravatar.cc/100?img=10" alt="" loading="lazy">
-        <img src="https://i.pravatar.cc/100?img=11" alt="" loading="lazy">
-        <img src="https://i.pravatar.cc/100?img=12" alt="" loading="lazy">
-        <img src="https://i.pravatar.cc/100?img=13" alt="" loading="lazy">
-      </div>
-      <div class="trust-text"><b>4.9/5 من 1,200+ قارئ</b><br>موثوق من ناشرين عرب</div>
+    <div style="margin-top:36px; display:flex; gap:24px; font-size:13px; color:#666">
+      <span>✓ نشر فوري</span>
+      <span>✓ إعلاناتك لك</span>
+      <span>✓ بدون عمولة</span>
     </div>
   </div>
-  <div class="hero-right">
-    <div class="float-b f1">⚡ تحميل 0.8s</div>
-    <div class="float-b f2">🔔 إشعار فوري</div>
-    <div class="stack">
-      <div class="card-stack">
-        <div class="s-head"><div class="icon">📚</div><div><div class="s-title">كتاب مميز اليوم</div><div class="s-sub">رواية • 4.8 ⭐</div></div></div>
-        <div class="s-body"><div class="s-item"><div class="line"></div><div class="line o"></div></div><div class="s-item"><div class="line o"></div><div class="line"></div></div></div>
-      </div>
-      <div class="card-stack">
-        <div class="s-head"><div class="icon">📝</div><div><div class="s-title">مقالات رائجة</div><div class="s-sub">+12 مقال جديد</div></div></div>
-        <div class="s-body"><div class="s-item"><div class="line"></div><div class="line"></div></div><div class="s-item"><div class="line"></div><div class="line o"></div></div></div>
-      </div>
-      <div class="card-stack">
-        <div class="s-head"><div class="icon">💬</div><div><div class="s-title">مجتمع القراء</div><div class="s-sub">نقاشات حية</div></div></div>
-      </div>
+  <div style="background:#111; border:1px solid #222; border-radius:16px; padding:18px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <b style="font-size:14px">كتاب مميز</b>
+      <span style="font-size:12px; color:#666">رواية</span>
+    </div>
+    <div style="background:#0a0a0a; border-radius:10px; height:220px; display:flex; align-items:center; justify-content:center; color:#333">غلاف الكتاب</div>
+    <div style="margin-top:14px">
+      <div style="height:12px; background:#1a1a1a; border-radius:4px; width:80%; margin-bottom:8px"></div>
+      <div style="height:10px; background:#151515; border-radius:4px; width:60%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- كيف تعمل - احترافي -->
+<section id="how-it-works" style="padding:60px 6%; background:#0c0c0c; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a">
+  <div style="max-width:1200px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:24px">
+    <div>
+      <div style="width:36px;height:36px;background:#1a1a1a;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">📖</div>
+      <h4 style="margin:0 0 6px">اقرأ بلا حدود</h4>
+      <p style="margin:0; color:#777; font-size:14px; line-height:1.6">مكتبة متنامية من الكتب والمقالات العربية الأصيلة، متاحة للقراءة المباشرة.</p>
+    </div>
+    <div>
+      <div style="width:36px;height:36px;background:#1a1a1a;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">✍️</div>
+      <h4 style="margin:0 0 6px">انشر بنفسك</h4>
+      <p style="margin:0; color:#777; font-size:14px; line-height:1.6">ارفع كتابك أو مقالك في دقائق. لا موافقات معقدة، ولا وسيط بينك وبين جمهورك.</p>
+    </div>
+    <div>
+      <div style="width:36px;height:36px;background:#1a1a1a;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">💰</div>
+      <h4 style="margin:0 0 6px">اربح من محتواك</h4>
+      <p style="margin:0; color:#777; font-size:14px; line-height:1.6">أضف إعلاناتك الخاصة داخل كتبك. أرباحك لك 100%، المنصة لا تقتسمها.</p>
     </div>
   </div>
 </section>
 
-<section id="how-it-works" style="padding:40px 5%;background:#0f0f0f;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a">
-  <h2 style="text-align:center;margin-bottom:20px">كيف تعمل؟</h2>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-    <div class="card"><h4>1. اقرأ</h4><p style="color:#888;font-size:13px">آلاف الكتب المجانية بتحميل فوري</p></div>
-    <div class="card"><h4>2. انشر</h4><p style="color:#888;font-size:13px">ارفع كتابك واربح من إعلاناتك</p></div>
-    <div class="card"><h4>3. تفاعل</h4><p style="color:#888;font-size:13px">إشعارات فورية وتعليقات</p></div>
+<section id="latest-books" style="padding:50px 6%; max-width:1200px; margin:0 auto">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+    <h3 style="margin:0">أحدث الكتب</h3>
+    <a href="books.html" style="color:#777; text-decoration:none; font-size:14px">عرض الكل ←</a>
   </div>
-</section>
-
-<!-- LAZY SECTIONS - لن تحمل إلا عند الظهور -->
-<section id="latest-books" data-lazy="books" class="lazy-section">
-  <h3 class="section-title">📚 أحدث الكتب <span style="font-size:12px;color:#666">(Lazy Loaded)</span></h3>
   <div class="grid" id="books-grid">
-    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
-    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
-    <div class="card"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:16px;margin-top:10px"></div></div>
+    <div class="card"><div class="skeleton" style="height:160px"></div></div>
+    <div class="card"><div class="skeleton" style="height:160px"></div></div>
+    <div class="card"><div class="skeleton" style="height:160px"></div></div>
   </div>
 </section>
 
-<section id="latest-articles" data-lazy="articles" class="lazy-section">
-  <h3 class="section-title">📝 أحدث المقالات <span style="font-size:12px;color:#666">(Lazy Loaded)</span></h3>
-  <div class="grid" id="articles-grid">
-    <div class="card"><div class="skeleton" style="height:60px"></div></div>
-    <div class="card"><div class="skeleton" style="height:60px"></div></div>
+<section id="latest-articles" style="padding:0 6% 60px; max-width:1200px; margin:0 auto">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+    <h3 style="margin:0">أحدث المقالات</h3>
+    <a href="articles.html" style="color:#777; text-decoration:none; font-size:14px">عرض الكل ←</a>
   </div>
+  <div class="grid" id="articles-grid"></div>
 </section>
 
-<div id="ad-home"></div>
+<footer style="padding:40px 6%; border-top:1px solid #1a1a1a; color:#555; font-size:13px; text-align:center">
+  <p>© 2026 رفوف - منصة النشر العربي المفتوح</p>
+</footer>
+
 <div id="toast-container"></div>
-
-<!-- V9 REAL LAZY LOADING: فقط loader + toast أولاً -->
 <script src="js/toast.js"></script>
 <script type="module">
-// V9 - REAL Lazy Loading Implementation - كل الملفات لا تتحمل مرة واحدة
-console.log('[V9] Initial bundle: only toast.js + this inline (~3KB)');
-
 const lazyRegistry = {
-  books: async () => {
-    const m = await import('./js/modules/books.js');
-    m.init();
-  },
-  articles: async () => {
-    const m = await import('./js/modules/articles.js');
-    m.init();
-  }
+  books: async () => { const m = await import('./js/modules/books.js'); m.init(); },
+  articles: async () => { const m = await import('./js/modules/articles.js'); m.init(); }
 };
-
 const observer = new IntersectionObserver((entries)=>{
   entries.forEach(entry=>{
     if(entry.isIntersecting){
-      const type = entry.target.dataset.lazy;
-      if(lazyRegistry[type]){
-        console.log(`[Lazy] Loading ${type} module...`);
-        lazyRegistry[type]();
-        observer.unobserve(entry.target);
-        // Remove skeleton after load
-        entry.target.querySelectorAll('.skeleton').forEach(s=>s.style.display='none');
-      }
+      const type = entry.target.id.includes('books') ? 'books' : 'articles';
+      if(lazyRegistry[type]){ lazyRegistry[type](); observer.unobserve(entry.target); }
     }
   });
-}, {rootMargin:'400px'}); // يبدأ التحميل قبل 400px من الظهور
-
-document.querySelectorAll('[data-lazy]').forEach(el=>observer.observe(el));
-
-// Images lazy with native + data-src fallback
-if('loading' in HTMLImageElement.prototype){
-  document.querySelectorAll('img[data-src]').forEach(img=>{ img.src=img.dataset.src; });
-} else {
-  const imgObs = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ const i=e.target; i.src=i.dataset.src; imgObs.unobserve(i); }}));
-  document.querySelectorAll('img[data-src]').forEach(i=>imgObs.observe(i));
-}
-
-// PWA
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js');
-}
-
-// Performance log
-window.addEventListener('load', ()=>{
-  const perf = performance.getEntriesByType('navigation')[0];
-  console.log(`[Perf] Load time: ${Math.round(perf.loadEventEnd - perf.startTime)}ms, Transfer: ${Math.round(perf.transferSize/1024)}KB`);
-});
+}, {rootMargin:'200px'});
+document.querySelectorAll('#latest-books, #latest-articles').forEach(el=>observer.observe(el));
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js'); }
 </script>
 <script src="js/ads.js" defer></script>
-</body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
