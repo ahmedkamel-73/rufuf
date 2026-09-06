@@ -23,93 +23,134 @@
 }
 </style>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>الملف الشخصي - رفوف</title>
+<title>بروفايلي - رفوف</title>
 <link rel="stylesheet" href="css/style.css">
 <style>
-.profile-wrapper{max-width:900px;margin:40px auto;padding:0 20px}
-.profile-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px}
-.avatar-section{display:flex;gap:24px;align-items:center;margin-bottom:32px}
-.avatar-preview{width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:2px solid var(--border);overflow:hidden;display:grid;place-items:center;font-size:36px;color:#666}
-.avatar-preview img{width:100%;height:100%;object-fit:cover}
-.field{margin-bottom:20px}
-.field label{display:block;font-weight:600;margin-bottom:8px;font-size:14px}
-.field input,.field textarea{width:100%;background:#0f0f0f;border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:#fff;font-size:14px}
-.field textarea{resize:vertical;min-height:100px}
-.field small{color:#666;font-size:12px;margin-top:6px;display:block}
-.btn-save{background:#ff6b00;color:#fff;border:none;padding:12px 32px;border-radius:100px;font-weight:700;cursor:pointer}
-.btn-save:disabled{opacity:0.5}
+.profile-wrap{max-width:700px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:20px 0}
+.avatar-wrap{width:120px;height:120px;border-radius:50%;overflow:hidden;background:#222;margin:0 auto 16px;display:grid;place-items:center;font-size:40px;cursor:pointer;position:relative;border:2px solid #ff6b00}
+.avatar-wrap img{width:100%;height:100%;object-fit:cover}
+.input{width:100%;background:#0f0f0f;border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:#fff;margin-bottom:14px}
+.btn{padding:12px 24px;border-radius:100px;border:none;cursor:pointer;font-weight:700;width:100%}
+.btn-orange{background:#ff6b00;color:#fff}
+.status{margin-top:12px;padding:10px;border-radius:8px;font-size:13px}
+.status.ok{background:#0f1a0f;color:#22c55e;border:1px solid #22c55e}
+.status.err{background:#1a0f0f;color:#ef4444;border:1px solid #ef4444}
 </style>
 </head>
 <body>
-<header><h1>📚 رفوف</h1><nav id="main-nav"><a href="index.html">الرئيسية</a><a href="books.html">الكتب</a></nav></header>
-<div class="profile-wrapper">
-  <h2 style="margin-bottom:24px">الملف الشخصي</h2>
-  <div class="profile-card">
-    <div class="avatar-section">
-      <div class="avatar-preview" id="avatarPreview">👤</div>
-      <div>
-        <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp" style="display:none">
-        <button onclick="document.getElementById('avatarInput').click()" class="btn-secondary" style="padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:#fff;cursor:pointer">تغيير الصورة</button>
-        <div style="font-size:12px;color:#666;margin-top:8px">JPG, PNG, WEBP - حد أقصى 2MB</div>
-      </div>
+<header><h1>📚 رفوف - بروفايلي</h1><nav><a href="index.html">الرئيسية</a><a href="publisher.html">لوحة الناشر</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<div class="profile-wrap">
+  <div class="card" style="text-align:center">
+    <div class="avatar-wrap" onclick="document.getElementById('avatarFile').click()">
+      <span id="avatarPlaceholder">👤</span>
+      <img id="avatarImg" style="display:none">
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);font-size:10px;padding:2px">غير الصورة</div>
     </div>
-    <div class="field"><label>الاسم الظاهر للقراء</label><input id="displayName" placeholder="مثال: أحمد كامل"><small>هذا الاسم سيظهر تحت كتبك ومقالاتك بدلاً من الإيميل</small></div>
-    <div class="field"><label>نبذة عنك</label><textarea id="bio" placeholder="كاتب وروائي مهتم بـ..."></textarea><small>سطرين كحد أقصى - تظهر في صفحة كتبك</small></div>
-    <div class="field"><label>الموقع / تويتر (اختياري)</label><input id="website" placeholder="https://twitter.com/..."></div>
-    <div class="field"><label>البريد</label><input id="email" disabled style="opacity:0.6"></div>
-    <div class="field"><label>الدور</label><input id="role" disabled style="opacity:0.6"></div>
-    <button id="saveBtn" class="btn-save">حفظ التغييرات</button>
-    <div id="msg" style="margin-top:16px;font-size:14px"></div>
+    <input type="file" id="avatarFile" accept="image/jpeg,image/png,image/webp,image/jpg" style="display:none">
+    <h3 id="displayEmail" style="color:#888;font-size:13px"></h3>
+    <p style="color:#666;font-size:12px">اضغط على الصورة لتغييرها - الحد 5MB</p>
   </div>
-  <div style="margin-top:24px"><a href="join-publisher.html" id="joinLink" style="color:#ff6b00">طلب الانضمام كناشر →</a></div>
+
+  <div class="card">
+    <h3 style="color:#ff6b00;margin-bottom:16px">📝 بياناتي العامة (تظهر للقراء)</h3>
+    <label style="color:#888;font-size:12px">الاسم الظاهر</label>
+    <input id="displayName" class="input" placeholder="مثال: أحمد كامل - كاتب روائي">
+    
+    <label style="color:#888;font-size:12px">النبذة عن الكاتب</label>
+    <textarea id="bio" class="input" rows="4" placeholder="اكتب نبذة عنك - من أنت؟ ماذا تكتب؟"></textarea>
+    
+    <label style="color:#888;font-size:12px">رابط موقعك أو حسابك (اختياري)</label>
+    <input id="website" class="input" placeholder="https://...">
+    
+    <button class="btn btn-orange" onclick="saveProfile()">💾 حفظ البروفايل</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <h3>🔗 روابطي</h3>
+    <p><a href="author.html?id=me" id="publicLink" style="color:#ff6b00">عرض صفحتي العامة للقراء →</a></p>
+    <p><a href="join-publisher.html" style="color:#888;font-size:13px">طلب انضمام كناشر</a></p>
+  </div>
 </div>
-<div id="toast-container"></div>
-<script src="js/toast.js"></script>
 <script src="js/api.js"></script>
-<script src="js/auth.js"></script>
 <script>
-let avatarUrl = '';
+let currentUser = null;
+let newAvatarUrl = '';
+
 async function loadProfile(){
-  const user = getUser(); if(!user){ location.href='login.html'; return; }
-  try{
-    const data = await apiGet('/api/me');
-    if(data){
-      document.getElementById('displayName').value = data.display_name || data.name || '';
-      document.getElementById('bio').value = data.bio || '';
-      document.getElementById('website').value = data.website || '';
-      document.getElementById('email').value = data.email || '';
-      document.getElementById('role').value = data.role || '';
-      avatarUrl = data.avatar_url || '';
-      if(avatarUrl) document.getElementById('avatarPreview').innerHTML = `<img src="${avatarUrl}">`;
-      else document.getElementById('avatarPreview').textContent = (data.display_name||data.name||'👤').charAt(0).toUpperCase();
-      if(data.role!=='reader') document.getElementById('joinLink').style.display='none';
-    }
-  }catch(e){}
-}
-document.getElementById('avatarInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  if(file.size > 2*1024*1024){ toast('الصورة كبيرة جداً - حد أقصى 2MB','error'); return; }
-  const fd = new FormData(); fd.append('file', file);
-  toast('جاري رفع الصورة...','info');
   try{
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/upload/avatar', {method:'POST', headers:{'Authorization':'Bearer '+token}, body:fd});
-    const data = await res.json();
-    if(data.url){ avatarUrl = data.url; document.getElementById('avatarPreview').innerHTML = `<img src="${avatarUrl}">`; toast('تم رفع الصورة','success'); }
-    else toast(data.error||'فشل الرفع','error');
-  }catch{ toast('فشل الرفع','error'); }
-});
-document.getElementById('saveBtn').addEventListener('click', async ()=>{
-  const btn = document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='جاري الحفظ...';
+    if(!token){ location.href='login.html'; return; }
+    const res = await fetch('/api/profile', {headers:{'Authorization':'Bearer '+token}}).then(r=>r.json());
+    if(res.error){ 
+      // fallback to localStorage
+      const u = JSON.parse(localStorage.getItem('user')||'{}');
+      currentUser = u;
+      document.getElementById('displayEmail').textContent = u.email||'';
+      document.getElementById('displayName').value = u.name||u.display_name||'';
+    } else {
+      currentUser = res;
+      document.getElementById('displayEmail').textContent = res.email||'';
+      document.getElementById('displayName').value = res.display_name||res.name||'';
+      document.getElementById('bio').value = res.bio||'';
+      document.getElementById('website').value = res.website||'';
+      if(res.avatar_url){
+        document.getElementById('avatarImg').src = res.avatar_url;
+        document.getElementById('avatarImg').style.display='block';
+        document.getElementById('avatarPlaceholder').style.display='none';
+      }
+      document.getElementById('publicLink').href = 'author.html?id='+res.id;
+    }
+  }catch(e){ console.log(e); }
+}
+
+document.getElementById('avatarFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){ alert('الصورة كبيرة - الحد 5MB'); return; }
+  const status = document.getElementById('status');
+  status.textContent='جاري رفع الصورة...'; status.className='status';
   try{
-    const payload = { display_name: document.getElementById('displayName').value.trim().slice(0,50), bio: document.getElementById('bio').value.trim().slice(0,300), website: document.getElementById('website').value.trim().slice(0,200), avatar_url: avatarUrl };
-    const res = await apiPut('/api/me', payload);
-    if(res.success){ toast('تم حفظ الملف الشخصي','success'); localStorage.setItem('user', JSON.stringify({...getUser(), ...payload})); updateHeader(); }
-    else toast(res.error||'خطأ','error');
-  }catch{ toast('خطأ','error'); }
-  btn.disabled=false; btn.textContent='حفظ التغييرات';
+    const up = await uploadFile(file);
+    newAvatarUrl = up.url;
+    document.getElementById('avatarImg').src = up.url;
+    document.getElementById('avatarImg').style.display='block';
+    document.getElementById('avatarPlaceholder').style.display='none';
+    status.textContent='✅ تم رفع الصورة - اضغط حفظ البروفايل'; status.className='status ok';
+  }catch(err){
+    status.textContent='❌ فشل الرفع: '+err.message; status.className='status err';
+  }
 });
-async function apiPut(url,data){ const token=localStorage.getItem('token'); const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)}); return r.json(); }
+
+async function saveProfile(){
+  const display_name = document.getElementById('displayName').value.trim();
+  const bio = document.getElementById('bio').value.trim();
+  const website = document.getElementById('website').value.trim();
+  const avatar_url = newAvatarUrl || (document.getElementById('avatarImg').src.includes('/cdn/') ? document.getElementById('avatarImg').src : '');
+  
+  if(!display_name){ alert('اكتب اسمك الظاهر'); return; }
+  
+  const status = document.getElementById('status');
+  status.textContent='جاري الحفظ...'; status.className='status';
+  
+  try{
+    const res = await apiPut('/api/profile', {display_name, bio, website, avatar_url});
+    if(res.success){
+      status.textContent='✅ تم حفظ البروفايل! سيظهر اسمك وصورتك مع كتبك ومقالاتك'; status.className='status ok';
+      // update localStorage
+      const u = JSON.parse(localStorage.getItem('user')||'{}');
+      u.display_name = display_name; u.name = display_name; u.avatar_url = avatar_url || u.avatar_url;
+      localStorage.setItem('user', JSON.stringify(u));
+    } else {
+      status.textContent='❌ '+(res.error||'خطأ'); status.className='status err';
+    }
+  }catch(e){
+    status.textContent='❌ '+e.message; status.className='status err';
+  }
+}
+
+function logout(){ localStorage.clear(); location.href='login.html'; }
 loadProfile();
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
