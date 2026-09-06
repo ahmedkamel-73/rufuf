@@ -27,33 +27,46 @@
 <link rel="stylesheet" href="css/style.css">
 <style>
 .admin-wrap{max-width:1200px;margin:0 auto;padding:20px}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
-.stat-card b{font-size:28px;display:block;color:#ff6b00}
-.stat-card span{color:#888;font-size:13px}
-.section{margin-top:40px}
-.table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
-.table th,.table td{padding:12px;text-align:right;border-bottom:1px solid var(--border);font-size:13px}
-.table th{color:#888;font-weight:600;background:#0f0f0f}
-.btn{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-size:12px}
-.btn-approve{background:#22c55e;color:#fff} .btn-reject{background:#ef4444;color:#fff} .btn-view{background:#333;color:#fff}
-.tabs{display:flex;gap:8px;margin:20px 0}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:24px 0}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px}
+.stat-card b{font-size:26px;display:block;color:#ff6b00}
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.action-btn{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;text-decoration:none;color:#fff}
+.action-btn.primary{background:#ff6b00;border-color:#ff6b00}
+.tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:#888;cursor:pointer}
-.tab.active{background:#fff;color:#000;border-color:#fff}
-.req-card{background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 0;display:flex;gap:16px;align-items:center}
-.req-avatar{width:48px;height:48px;border-radius:50%;background:#222;display:grid;place-items:center;overflow:hidden}
+.tab.active{background:#fff;color:#000}
+.table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
+.table th,.table td{padding:10px;text-align:right;border-bottom:1px solid var(--border);font-size:13px}
+.req-card{background:#111;border:1px solid #222;border-radius:12px;padding:14px;margin:10px 0;display:flex;gap:12px;align-items:center}
+.btn{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-size:12px}
+.btn-approve{background:#22c55e;color:#fff} .btn-reject{background:#ef4444;color:#fff}
 </style>
 </head>
 <body>
-<header><h1>📚 رفوف - لوحة الإدارة</h1><nav><a href="index.html">الرئيسية</a><a href="admin-ads.html">الإعلانات</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<header><h1>📚 رفوف - لوحة الإدارة</h1><nav><a href="index.html">الرئيسية</a><a href="profile.html">بروفايلي</a><a href="admin-ads.html">الإعلانات</a><a href="#" onclick="logout()">خروج</a></nav></header>
 <div class="admin-wrap">
-  <h2>مرحباً، أدمن 👑</h2>
+  <h2>لوحة التحكم 👑</h2>
   <div class="stats-grid" id="statsGrid"><div class="stat-card"><b>...</b><span>جاري التحميل</span></div></div>
-  <div class="tabs"><button class="tab active" data-tab="requests">طلبات الناشرين</button><button class="tab" data-tab="users">المستخدمين</button><button class="tab" data-tab="books">الكتب</button><button class="tab" data-tab="articles">المقالات</button></div>
+  
+  <div class="quick-actions">
+    <a href="upload-book.html" class="action-btn primary">📚 رفع كتاب جديد</a>
+    <a href="upload-article.html" class="action-btn">📝 كتابة مقالة</a>
+    <a href="publisher.html" class="action-btn">🧑‍💼 لوحة الناشر</a>
+    <a href="author.html?id=1" class="action-btn">👤 صفحتي العامة</a>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="requests">طلبات الناشرين</button>
+    <button class="tab" data-tab="users">المستخدمين</button>
+    <button class="tab" data-tab="books">الكتب</button>
+    <button class="tab" data-tab="articles">المقالات</button>
+  </div>
+
   <div id="tab-requests" class="tab-content"><div id="requestsList">جاري التحميل...</div></div>
   <div id="tab-users" class="tab-content" style="display:none"><table class="table" id="usersTable"><thead><tr><th>الناشر</th><th>البريد</th><th>الدور</th><th>كتب</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
-  <div id="tab-books" class="tab-content" style="display:none"><div id="booksList"></div></div>
-  <div id="tab-articles" class="tab-content" style="display:none"><div id="articlesList"></div></div>
+  <div id="tab-books" class="tab-content" style="display:none"><div id="booksList">جاري تحميل الكتب...</div></div>
+  <div id="tab-articles" class="tab-content" style="display:none"><div id="articlesList">جاري تحميل المقالات...</div></div>
 </div>
 <script src="js/api.js"></script>
 <script>
@@ -68,33 +81,38 @@ async function loadStats(){
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><b>${books}</b><span>إجمالي الكتب</span></div>
       <div class="stat-card"><b>${articles}</b><span>إجمالي المقالات</span></div>
-      <div class="stat-card"><b>${users}</b><span>إجمالي المستخدمين</span></div>
+      <div class="stat-card"><b>${users}</b><span>المستخدمين</span></div>
       <div class="stat-card"><b style="color:${requests>0?'#f59e0b':'#22c55e'}">${requests}</b><span>طلبات معلقة</span></div>
     `;
   }catch{}
 }
 async function loadRequests(){
   const res = await apiGet('/api/publisher-requests'); const c=document.getElementById('requestsList');
-  if(!res || res.error){ c.innerHTML='<p>خطأ</p>'; return; }
-  if(res.length===0){ c.innerHTML='<p style="color:#666">لا توجد طلبات حالياً - المنصة نظيفة</p>'; return; }
+  if(!res || res.error){ c.innerHTML='<p>خطأ في التحميل</p>'; return; }
+  if(res.length===0){ c.innerHTML='<p style="color:#666">✅ لا توجد طلبات معلقة - المنصة نظيفة</p>'; return; }
   c.innerHTML = res.map(r=>`
-    <div class="req-card"><div class="req-avatar">${r.avatar_url?`<img src="${r.avatar_url}" style="width:100%;height:100%;object-fit:cover">`: (r.name||'U').charAt(0)}</div>
-    <div style="flex:1"><b>${r.name}</b> - ${r.email}<br><small style="color:#888">${r.reason||''}</small><br><small style="color:${r.status==='pending'?'#f59e0b':r.status==='approved'?'#22c55e':'#ef4444'}">${r.status}</small></div>
-    <div>${r.status==='pending'?`<button class="btn btn-approve" onclick="handleReq(${r.id},'approved')">موافقة</button> <button class="btn btn-reject" onclick="handleReq(${r.id},'rejected')">رفض</button>`:`<span style="color:#666">${r.status}</span>`}</div></div>
+    <div class="req-card"><div style="width:40px;height:40px;border-radius:50%;background:#222;display:grid;place-items:center">${r.avatar_url?`<img src="${r.avatar_url}" style="width:100%;height:100%;border-radius:50%">`:r.name?.charAt(0)||'U'}</div>
+    <div style="flex:1"><b>${r.name}</b> - ${r.email}<br><small style="color:#888">${r.reason||''}</small><br><small style="color:${r.status==='pending'?'#f59e0b':'#22c55e'}">${r.status}</small></div>
+    <div>${r.status==='pending'?`<button class="btn btn-approve" onclick="handleReq(${r.id},'approved')">موافقة</button> <button class="btn btn-reject" onclick="handleReq(${r.id},'rejected')">رفض</button>`:`${r.status}`}</div></div>
   `).join('');
 }
 async function loadUsers(){
   const res = await apiGet('/api/admin/users').catch(()=>[]);
   const tbody = document.querySelector('#usersTable tbody');
-  if(!res.length){ tbody.innerHTML='<tr><td colspan=5 style="color:#666">لا يوجد مستخدمين</td></tr>'; return; }
-  tbody.innerHTML = res.map(u=>`
-    <tr><td style="display:flex;gap:8px;align-items:center"><div style="width:32px;height:32px;border-radius:50%;background:#222;display:grid;place-items:center;overflow:hidden">${u.avatar_url?`<img src="${u.avatar_url}" style="width:100%;height:100%">`:u.display_name?.charAt(0)||'U'}</div><div><b>${u.display_name||u.name||''}</b><br><small style="color:#888">${u.bio?u.bio.slice(0,30):''}</small></div></td><td>${u.email}</td><td><span style="background:${u.role==='admin'?'#ff6b00':u.role==='publisher'?'#7c3aed':'#333'};color:#fff;padding:2px 8px;border-radius:100px;font-size:11px">${u.role}</span> ${u.verified?'✔':''}</td><td>${u.books_count||0}</td><td><a class="btn btn-view" href="author.html?id=${u.id}">عرض</a></td></tr>
-  `).join('');
+  tbody.innerHTML = res.map(u=>`<tr><td style="display:flex;gap:8px;align-items:center"><div style="width:28px;height:28px;border-radius:50%;background:#222;overflow:hidden;display:grid;place-items:center">${u.avatar_url?`<img src="${u.avatar_url}" style="width:100%;height:100%">`:u.display_name?.charAt(0)||'U'}</div><div><b>${u.display_name||u.name}</b><br><small style="color:#666">${u.bio?u.bio.slice(0,25):''}</small></div></td><td>${u.email}</td><td>${u.role} ${u.verified?'✔':''}</td><td>${u.books_count||0}</td><td><a href="author.html?id=${u.id}" style="color:#ff6b00">عرض</a></td></tr>`).join('');
+}
+async function loadBooks(){
+  const books = await apiGet('/api/books').catch(()=>[]);
+  document.getElementById('booksList').innerHTML = books.length ? `<table class="table"><tr><th>العنوان</th><th>المؤلف</th><th>إجراء</th></tr>${books.map(b=>`<tr><td>${b.title}</td><td>${b.author||''}</td><td><a href="reader.html?id=${b.id}" style="color:#ff6b00">عرض</a></td></tr>`).join('')}</table>` : 'لا توجد كتب';
+}
+async function loadArticles(){
+  const arts = await apiGet('/api/articles').catch(()=>[]);
+  document.getElementById('articlesList').innerHTML = arts.length ? `<table class="table"><tr><th>العنوان</th><th>إجراء</th></tr>${arts.map(a=>`<tr><td>${a.title}</td><td><a href="article.html?id=${a.id}" style="color:#ff6b00">عرض</a></td></tr>`).join('')}</table>` : 'لا توجد مقالات';
 }
 async function handleReq(id,status){
-  if(!confirm(status==='approved'?'موافقة وتحويل لناشر موثق؟':'رفض الطلب؟')) return;
+  if(!confirm(status==='approved'?'موافقة وتحويل لناشر موثق؟':'رفض؟')) return;
   const r = await fetch('/api/publisher-requests/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({status})}).then(x=>x.json());
-  if(r.success){ loadRequests(); loadStats(); } else alert(r.error);
+  if(r.success){ loadRequests(); loadStats(); loadUsers(); } else alert(r.error);
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
@@ -102,6 +120,8 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');
     document.getElementById('tab-'+t.dataset.tab).style.display='block';
     if(t.dataset.tab==='users') loadUsers();
+    if(t.dataset.tab==='books') loadBooks();
+    if(t.dataset.tab==='articles') loadArticles();
   });
 });
 function logout(){ localStorage.clear(); location.href='login.html'; }
