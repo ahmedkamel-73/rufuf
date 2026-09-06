@@ -589,6 +589,46 @@ export default {
       return json(users.results);
     }
 
+
+    // ===== PROFILE - NEW V13 =====
+    if (url.pathname === '/api/profile' && method === 'GET') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const full = await env.DB.prepare('SELECT id,email,name,display_name,bio,avatar_url,website,role,is_publisher FROM users WHERE id=?').bind(user.id).first();
+      // If new columns don't exist, fallback
+      if (!full) return json(user);
+      return json(full);
+    }
+
+    if (url.pathname === '/api/profile' && method === 'PUT') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      try {
+        const { display_name, bio, avatar_url, website } = await request.json();
+        const cleanName = sanitizeString(display_name || '', 100);
+        const cleanBio = sanitizeString(bio || '', 500);
+        const cleanWebsite = (website && (website.startsWith('https://') || website.startsWith('http://')) ? website.slice(0,300) : '');
+        let cleanAvatar = '';
+        if (avatar_url && (avatar_url.startsWith('/cdn/') || avatar_url.startsWith('https://') || avatar_url.startsWith('/api/file/'))) {
+          cleanAvatar = avatar_url.slice(0,500);
+        }
+        // Try to update with new columns, create them if not exist
+        try {
+          await env.DB.prepare('ALTER TABLE users ADD COLUMN display_name TEXT').run().catch(()=>{});
+          await env.DB.prepare('ALTER TABLE users ADD COLUMN bio TEXT').run().catch(()=>{});
+          await env.DB.prepare('ALTER TABLE users ADD COLUMN avatar_url TEXT').run().catch(()=>{});
+          await env.DB.prepare('ALTER TABLE users ADD COLUMN website TEXT').run().catch(()=>{});
+        } catch(e){}
+        
+        await env.DB.prepare('UPDATE users SET display_name=?, bio=?, avatar_url=?, website=?, name=? WHERE id=?')
+          .bind(cleanName, cleanBio, cleanAvatar, cleanWebsite, cleanName, user.id).run();
+        
+        return json({ success: true, display_name: cleanName, bio: cleanBio, avatar_url: cleanAvatar });
+      } catch(e) {
+        return json({ error: 'خطأ في الحفظ: '+e.message }, 400);
+      }
+    }
+
     return json({ error: 'Route not found: ' + url.pathname }, 404);
   }
 };
