@@ -10,7 +10,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "rufuf-db"
-database_id = "f02c95c7-5467-4926-8d7a-1b018285869f"
+database_id = "b0f1b3a2-4e8a-4a3c-9f2d-123456789abc"
 
 [[r2_buckets]]
 binding = "R2"
@@ -18,6 +18,8 @@ bucket_name = "rufuf-storage"
 
 [vars]
 ENV = "production"
+# FIX: fallback JWT - will be overridden by Secret if set
+JWT_SECRET_FALLBACK = "Rufuf_Super_Secret_2025_@AhmedKamel_73!_Fallback_Key_For_Temp_Fix_123"
 
 [observability]
 enabled = true
