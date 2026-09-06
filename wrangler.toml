@@ -2,22 +2,17 @@ name = "rufuf"
 main = "worker/src/index.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
-
 [assets]
 directory = "./frontend"
 not_found_handling = "single-page-application"
-
 [[d1_databases]]
 binding = "DB"
 database_name = "rufuf-db"
-database_id = "b0f1b3a2-4e8a-4a3c-9f2d-123456789abc"
-
+database_id = "f02c95c7-5467-4926-8d7a-1b018285869f"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "rufuf-storage"
-
 [vars]
 ENV = "production"
-
 [observability]
 enabled = true
