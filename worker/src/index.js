@@ -623,6 +623,85 @@ export default {
     }
 
 
+
+    // ===== BOOKS EDIT/DELETE - V16 =====
+    if (url.pathname.startsWith('/api/books/') && method === 'PUT') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = url.pathname.split('/').pop();
+      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
+      const book = await env.DB.prepare('SELECT owner_id FROM books WHERE id=?').bind(id).first();
+      if (!book) return json({ error: 'Not found' }, 404);
+      if (user.role !== 'admin' && book.owner_id !== user.id) return json({ error: 'غير مصرح - ليس كتابك' }, 403);
+      try {
+        const { title, author, description, cover_url, file_url } = await request.json();
+        const cleanTitle = title ? sanitizeString(title, 200) : undefined;
+        const cleanAuthor = author !== undefined ? sanitizeString(author, 100) : undefined;
+        const cleanDesc = description !== undefined ? sanitizeString(description, 2000) : undefined;
+        
+        let setClause = [];
+        let params = [];
+        if (cleanTitle !== undefined) { setClause.push('title=?'); params.push(cleanTitle); }
+        if (cleanAuthor !== undefined) { setClause.push('author=?'); params.push(cleanAuthor); }
+        if (cleanDesc !== undefined) { setClause.push('description=?'); params.push(cleanDesc); }
+        if (cover_url !== undefined && (cover_url.startsWith('/cdn/') || cover_url.startsWith('/api/file/') || cover_url.startsWith('https://') || cover_url === '')) { setClause.push('cover_url=?'); params.push(cover_url.slice(0,500)); }
+        if (file_url !== undefined && (file_url.startsWith('/api/file/') || file_url.startsWith('/cdn/') || file_url === '')) { setClause.push('file_url=?'); params.push(file_url.slice(0,500)); }
+        
+        if (setClause.length === 0) return json({ error: 'لا يوجد ما يتم تعديله' }, 400);
+        params.push(id);
+        await env.DB.prepare(`UPDATE books SET ${setClause.join(',')} WHERE id=?`).bind(...params).run();
+        return json({ success: true });
+      } catch(e) { return json({ error: 'خطأ: '+e.message }, 400); }
+    }
+
+    if (url.pathname.startsWith('/api/books/') && method === 'DELETE') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = url.pathname.split('/').pop();
+      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
+      const book = await env.DB.prepare('SELECT owner_id, file_url, cover_url FROM books WHERE id=?').bind(id).first();
+      if (!book) return json({ error: 'Not found' }, 404);
+      if (user.role !== 'admin' && book.owner_id !== user.id) return json({ error: 'غير مصرح' }, 403);
+      await env.DB.prepare('DELETE FROM books WHERE id=?').bind(id).run();
+      // Optionally delete from R2 - keep for safety
+      return json({ success: true });
+    }
+
+    // ===== ARTICLES EDIT/DELETE - V16 =====
+    if (url.pathname.startsWith('/api/articles/') && method === 'PUT') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = url.pathname.split('/').pop();
+      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
+      const art = await env.DB.prepare('SELECT author_id FROM articles WHERE id=?').bind(id).first();
+      if (!art) return json({ error: 'Not found' }, 404);
+      if (user.role !== 'admin' && art.author_id !== user.id) return json({ error: 'غير مصرح - ليس مقالك' }, 403);
+      try {
+        const { title, content, cover_url } = await request.json();
+        let setClause = []; let params = [];
+        if (title !== undefined) { setClause.push('title=?'); params.push(sanitizeString(title,200)); }
+        if (content !== undefined) { setClause.push('content=?'); params.push(sanitizeString(content,50000)); }
+        if (cover_url !== undefined) { setClause.push('cover_url=?'); params.push((cover_url.startsWith('/cdn/')||cover_url.startsWith('https://')||cover_url==='')?cover_url.slice(0,500):''); }
+        if (!setClause.length) return json({ error: 'لا يوجد تعديل' }, 400);
+        params.push(id);
+        await env.DB.prepare(`UPDATE articles SET ${setClause.join(',')} WHERE id=?`).bind(...params).run();
+        return json({ success: true });
+      } catch(e) { return json({ error: e.message }, 400); }
+    }
+
+    if (url.pathname.startsWith('/api/articles/') && method === 'DELETE') {
+      const user = await getUserFromReq(request, env);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = url.pathname.split('/').pop();
+      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
+      const art = await env.DB.prepare('SELECT author_id FROM articles WHERE id=?').bind(id).first();
+      if (!art) return json({ error: 'Not found' }, 404);
+      if (user.role !== 'admin' && art.author_id !== user.id) return json({ error: 'غير مصرح' }, 403);
+      await env.DB.prepare('DELETE FROM articles WHERE id=?').bind(id).run();
+      return json({ success: true });
+    }
+
+
     // ===== PROFILE - NEW V13 =====
     if (url.pathname === '/api/profile' && method === 'GET') {
       const user = await getUserFromReq(request, env);
