@@ -223,30 +223,34 @@ export default {
       } catch(e) { return json({ error: 'خطأ في تسجيل الدخول' }, 400); }
     }
 
-    // ===== UPLOAD - SECURED =====
+    // ===== UPLOAD - FIXED V14 PERMISSIVE =====
     if (url.pathname === '/api/upload' && method === 'POST') {
       const user = await getUserFromReq(request, env);
-      if (!user) return json({ error: 'Unauthorized' }, 401);
+      if (!user) return json({ error: 'Unauthorized - سجل دخول' }, 401);
       try {
         const form = await request.formData();
         const file = form.get('file');
-        if (!file) return json({ error: 'No file' }, 400);
+        if (!file) return json({ error: 'No file - اختر ملف' }, 400);
         
-        // SECURITY: Validate size
-        const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+        // V14: More permissive - allow any image/* and pdf/epub
+        const fileType = (file.type || '').toLowerCase();
+        const fileName = (file.name || '').toLowerCase();
+        const isImage = fileType.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif)$/);
+        const isBook = fileType.includes('pdf') || fileType.includes('epub') || fileName.match(/\.(pdf|epub)$/) || fileType === 'application/octet-stream';
+        
         const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
-        if (file.size > maxSize) return json({ error: `الملف كبير جداً - الحد الأقصى ${maxSize/1024/1024}MB` }, 400);
+        if (file.size > maxSize) return json({ error: `الملف كبير جداً - الحد ${maxSize/1024/1024}MB - حجم ملفك ${(file.size/1024/1024).toFixed(1)}MB` }, 400);
         if (file.size === 0) return json({ error: 'ملف فارغ' }, 400);
 
-        // SECURITY: Validate type
-        const allowedTypes = [...ALLOWED_BOOK_TYPES, ...ALLOWED_IMAGE_TYPES];
-        if (!allowedTypes.includes(file.type)) {
-          return json({ error: `نوع الملف غير مسموح: ${file.type}` }, 400);
+        // Allow all image/* and pdf/epub
+        if (!isImage && !isBook) {
+          return json({ error: `نوع الملف غير مسموح: ${file.type || file.name} - المسموح: صور وكتب PDF/EPUB فقط` }, 400);
         }
 
-        // SECURITY: Sanitize filename
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
-        const key = Date.now() + '_' + crypto.randomUUID().slice(0,8) + '_' + safeName;
+        // SECURITY: Sanitize filename - V15 fixed (was creating keys with / in screenshot)
+        const safeName = (file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g,'_').slice(0, 60);
+        const ext = safeName.includes('.') ? safeName.split('.').pop().slice(0,10) : (isImage ? 'jpg' : 'pdf');
+        const key = Date.now() + '_' + crypto.randomUUID().slice(0,8) + '_' + Date.now() + '.' + ext;
         
         await env.R2.put(key, file.stream(), { 
           httpMetadata: { contentType: file.type },
@@ -311,25 +315,40 @@ export default {
       });
     }
 
-    // ===== BOOKS - SECURED WITH PAGINATION =====
+    // ===== BOOKS - FIXED V15 - returns array for frontend compatibility =====
     if (url.pathname === '/api/books' && method === 'GET') {
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
       const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
       const offset = (page - 1) * limit;
       const search = url.searchParams.get('search');
-      let query = 'SELECT b.*, u.name as owner_name FROM books b LEFT JOIN users u ON b.owner_id=u.id';
-      let countQuery = 'SELECT COUNT(*) as total FROM books b';
+      const authorId = url.searchParams.get('author_id') || url.searchParams.get('owner_id');
+      
+      let query = 'SELECT b.*, u.name as owner_name, u.display_name as owner_display, u.avatar_url as owner_avatar FROM books b LEFT JOIN users u ON b.owner_id=u.id';
       let params = [];
+      let where = [];
+      
       if (search) {
         const cleanSearch = '%' + sanitizeString(search, 100) + '%';
-        query += ' WHERE b.title LIKE ? OR b.author LIKE ?';
-        countQuery += ' WHERE b.title LIKE ? OR b.author LIKE ?';
-        params = [cleanSearch, cleanSearch];
+        where.push('(b.title LIKE ? OR b.author LIKE ?)');
+        params.push(cleanSearch, cleanSearch);
       }
+      if (authorId && /^\d+$/.test(authorId)) {
+        where.push('b.owner_id = ?');
+        params.push(parseInt(authorId));
+      }
+      
+      if (where.length) query += ' WHERE ' + where.join(' AND ');
       query += ' ORDER BY b.id DESC LIMIT ? OFFSET ?';
+      
       const books = await env.DB.prepare(query).bind(...params, limit, offset).all();
-      const totalRow = await env.DB.prepare(countQuery).bind(...params).first();
-      return json({ books: books.results, total: totalRow?.total || 0, page, limit });
+      
+      // V15 FIX: if frontend expects array (no page param in URL), return array directly for backward compat
+      const hasPageParam = url.searchParams.has('page') || url.searchParams.has('limit');
+      if (!hasPageParam) {
+        return json(books.results); // return array directly - fixes publisher.html
+      }
+      const totalRow = await env.DB.prepare('SELECT COUNT(*) as total FROM books b' + (where.length ? ' WHERE ' + where.join(' AND ') : '')).bind(...params.slice(0, -0)).first().catch(()=>({total: books.results.length}));
+      return json({ books: books.results, total: totalRow?.total || books.results.length, page, limit });
     }
 
     if (url.pathname === '/api/books' && method === 'POST') {
@@ -361,14 +380,28 @@ export default {
       return json(book);
     }
 
-    // ===== ARTICLES - SECURED =====
+    // ===== ARTICLES - FIXED V15 =====
     if (url.pathname === '/api/articles' && method === 'GET') {
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
       const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
       const offset = (page - 1) * limit;
-      const arts = await env.DB.prepare('SELECT a.*, u.name as author_name FROM articles a LEFT JOIN users u ON a.author_id=u.id ORDER BY a.id DESC LIMIT ? OFFSET ?').bind(limit, offset).all();
-      const totalRow = await env.DB.prepare('SELECT COUNT(*) as total FROM articles').first();
-      return json({ articles: arts.results, total: totalRow?.total || 0, page, limit });
+      const authorId = url.searchParams.get('author_id') || url.searchParams.get('owner_id');
+      
+      let query = 'SELECT a.*, u.name as author_name, u.display_name, u.avatar_url FROM articles a LEFT JOIN users u ON a.author_id=u.id';
+      let params = [];
+      if (authorId && /^\d+$/.test(authorId)) {
+        query += ' WHERE a.author_id = ?';
+        params.push(parseInt(authorId));
+      }
+      query += ' ORDER BY a.id DESC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+      
+      const arts = await env.DB.prepare(query).bind(...params).all();
+      const hasPageParam = url.searchParams.has('page') || url.searchParams.has('limit');
+      if (!hasPageParam) {
+        return json(arts.results);
+      }
+      return json({ articles: arts.results, total: arts.results.length, page, limit });
     }
 
     if (url.pathname === '/api/articles' && method === 'POST') {
