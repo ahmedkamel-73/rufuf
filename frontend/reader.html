@@ -1,35 +1,131 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>القارئ - رفوف V6.2</title><link rel="stylesheet" href="css/style.css">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>القارئ - رفوف</title>
+<link rel="stylesheet" href="css/style.css">
 <style>
-.ad-slot{ background:#111; border:1px dashed #ff6b00; padding:12px; margin:12px 0; border-radius:8px; text-align:center; min-height:60px }
-.ad-slot.publisher{ border-color:#22c55e; background:#0f1a0f }
-.ad-label{ font-size:11px; color:#888; margin-bottom:6px }
-.reader-layout{ display:grid; grid-template-columns:1fr 300px; gap:20px; max-width:1200px; margin:0 auto }
-@media(max-width:900px){ .reader-layout{ grid-template-columns:1fr } }
+.reader-wrap{max-width:900px;margin:0 auto;padding:20px}
+.ad-slot{background:#111;border:1px dashed #444;padding:12px;margin:16px 0;border-radius:10px;text-align:center;min-height:70px}
+.ad-slot.platform{border-color:#ff6b00} .ad-slot.publisher{border-color:#22c55e;background:#0f1a0f}
+.ad-label{font-size:11px;color:#888;margin-bottom:6px}
+.book-header{text-align:center;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:20px 0}
+.book-header img{max-width:200px;border-radius:12px;margin:10px auto;display:block;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+.book-content{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;line-height:1.9;margin:20px 0;white-space:pre-wrap}
+.pdf-viewer{width:100%;height:80vh;border:none;border-radius:12px;background:#111}
 </style>
 </head>
 <body>
-<header><h1>📖 رفوف - القارئ</h1><nav><a href="index.html">الرئيسية</a><a href="books.html">الكتب</a></nav></header>
-<main class="reader-layout">
-<div>
-<!-- V6.2 REFINED: إعلان المنصة العام -->
-<div id="ad-reader-platform" class="ad-slot"><div class="ad-label">إعلان المنصة</div><span>جاري التحميل...</span></div>
+<header><h1>📖 رفوف - القارئ</h1><nav><a href="index.html">الرئيسية</a><a href="books.html">الكتب</a><a href="publisher.html">لوحة الناشر</a></nav></header>
+<div class="reader-wrap">
+  <div id="ad-top-platform" class="ad-slot platform"><div class="ad-label">إعلان المنصة</div>جاري التحميل...</div>
+  <div id="ad-top-publisher" class="ad-slot publisher"><div class="ad-label">إعلان الناشر 💰</div></div>
 
-<article id="book-view"><h2 id="book-title">جاري التحميل...</h2><p id="book-author"></p><img id="book-cover" style="max-width:300px"><div id="book-desc"></div><div id="book-file"></div></article>
+  <div class="book-header">
+    <h1 id="book-title">جاري التحميل...</h1>
+    <p id="book-author" style="color:#888"></p>
+    <img id="book-cover" style="display:none">
+    <p id="book-owner" style="color:#22c55e;font-size:12px;margin-top:10px"></p>
+  </div>
 
-<!-- V6.2 REFINED: إعلان الناشر صاحب الكتاب -->
-<div id="ad-reader-publisher" class="ad-slot publisher"><div class="ad-label">إعلان الناشر</div><span>سيظهر إعلان ناشر هذا الكتاب هنا</span></div>
+  <div id="ad-mid-platform" class="ad-slot platform"><div class="ad-label">إعلان المنصة</div></div>
+
+  <div id="book-desc" class="book-content" style="display:none"></div>
+  
+  <div id="book-file-wrap" style="margin:20px 0"></div>
+  <div id="share-wrap"></div>
+
+  <div id="ad-bottom-publisher" class="ad-slot publisher"><div class="ad-label">إعلان الناشر 💰 - يظهر مع هذا الكتاب</div></div>
+  <div id="ad-bottom-platform" class="ad-slot platform"><div class="ad-label">إعلان المنصة</div></div>
 </div>
-<aside>
-<div id="ad-sidebar-platform" class="ad-slot"><div class="ad-label">إعلان جانبي - المنصة</div></div>
-<div id="ad-sidebar-publisher" class="ad-slot publisher"><div class="ad-label">إعلان جانبي - الناشر</div></div>
-<div id="related"></div>
-</aside>
-</main>
 <script src="js/api.js"></script>
 <script src="js/ads.js"></script>
-<script src="js/reader.js"></script>
-</body>
+<script>
+
+function shareButtons(title, url){
+  const encTitle = encodeURIComponent(title);
+  const encUrl = encodeURIComponent(url);
+  return `
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;padding:12px;background:#111;border-radius:12px;border:1px solid #222">
+    <span style="color:#888;font-size:12px;width:100%;margin-bottom:4px">📤 شارك ${title.slice(0,30)}:</span>
+    <a href="https://wa.me/?text=${encTitle}%20${encUrl}" target="_blank" style="background:#25D366;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">واتساب</a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=${encUrl}" target="_blank" style="background:#1877F2;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">فيسبوك</a>
+    <a href="https://twitter.com/intent/tweet?text=${encTitle}&url=${encUrl}" target="_blank" style="background:#000;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">X</a>
+    <a href="https://t.me/share/url?url=${encUrl}&text=${encTitle}" target="_blank" style="background:#26A5E4;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">تليجرام</a>
+    <button onclick="navigator.clipboard.writeText('${url}');this.textContent='✅ تم النسخ';setTimeout(()=>this.textContent='🔗 نسخ الرابط',2000)" style="background:#333;color:#fff;padding:8px 14px;border-radius:100px;border:none;cursor:pointer;font-size:13px">🔗 نسخ الرابط</button>
+  </div>`;
+}
+
+async function loadBook(){
+  const id=new URLSearchParams(location.search).get('id');
+  if(!id){ document.getElementById('book-title').textContent='لم تحدد كتاب'; return; }
+  try{
+    const book=await fetch('/api/books/'+id).then(r=>r.json());
+    if(book.error){ document.getElementById('book-title').textContent=book.error; return; }
+    
+    document.getElementById('book-title').textContent=book.title;
+    document.getElementById('book-author').textContent=book.author||'';
+    document.getElementById('book-desc').textContent=book.description||'';
+    document.getElementById('book-desc').style.display=book.description?'block':'none';
+    
+    if(book.cover_url){ const c=document.getElementById('book-cover'); c.src=book.cover_url; c.style.display='block'; }
+    if(book.owner_id){ document.getElementById('book-owner').textContent='ناشر #'+book.owner_id+' - إعلاناته تظهر هنا 💰'; }
+    
+    // ملف الكتاب
+    if(book.file_url){
+      const wrap=document.getElementById('book-file-wrap');
+      if(book.file_url.endsWith('.pdf') || book.file_url.includes('pdf')){
+        wrap.innerHTML=`<h3>📄 قراءة الكتاب</h3><iframe class="pdf-viewer" src="${book.file_url}"></iframe><br><a href="${book.file_url}" target="_blank" style="background:#ff6b00;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;display:inline-block;margin-top:12px">📥 تحميل الكتاب</a>`;
+      } else {
+        wrap.innerHTML=`<a href="${book.file_url}" target="_blank" style="background:#ff6b00;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;display:inline-block">📄 تحميل/قراءة الكتاب</a>`;
+      }
+    }
+
+    // مشاركة
+    const shareUrl = location.href;
+    document.getElementById("share-wrap").innerHTML = shareButtons(book.title, shareUrl);
+
+    // إعلانات
+    const platformAds=await fetchAds('reader');
+    if(platformAds[0]) renderAd(platformAds[0],'ad-top-platform');
+    if(platformAds[1]) renderAd(platformAds[1],'ad-mid-platform');
+    if(platformAds[2]) renderAd(platformAds[2],'ad-bottom-platform');
+    if(platformAds[0] && !platformAds[1]) renderAd(platformAds[0],'ad-bottom-platform');
+
+    if(book.owner_id){
+      const pubAds=await fetchAds('reader', book.owner_id);
+      if(pubAds[0]) renderAd(pubAds[0],'ad-top-publisher');
+      if(pubAds[1]) renderAd(pubAds[1],'ad-bottom-publisher');
+      else if(pubAds[0]) renderAd(pubAds[0],'ad-bottom-publisher');
+      else {
+        document.getElementById('ad-top-publisher').innerHTML='<div class="ad-label">إعلان الناشر #'+book.owner_id+'</div><small style="color:#666">الناشر لم يضف إعلان بعد</small>';
+        document.getElementById('ad-bottom-publisher').style.display='none';
+      }
+    }
+  }catch(e){ document.getElementById('book-title').textContent='خطأ: '+e.message; }
+}
+loadBook();
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
