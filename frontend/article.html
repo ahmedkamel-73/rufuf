@@ -49,6 +49,7 @@
     <p id="author" style="color:#888;font-size:14px"></p>
     <img id="cover" style="max-width:100%;display:none">
     <div id="content" style="margin-top:20px;color:#ddd;white-space:pre-wrap"></div>
+    <div id="share-wrap" style="margin-top:20px"></div>
   </article>
 
   <!-- إعلان الناشر تحت المقال - ده اللي بيكسب منه -->
@@ -68,6 +69,21 @@
 <script src="js/api.js"></script>
 <script src="js/ads.js"></script>
 <script>
+
+function shareButtons(title, url){
+  const encTitle = encodeURIComponent(title);
+  const encUrl = encodeURIComponent(url);
+  return `
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;padding:12px;background:#111;border-radius:12px;border:1px solid #222">
+    <span style="color:#888;font-size:12px;width:100%;margin-bottom:4px">📤 شارك ${title.slice(0,30)}:</span>
+    <a href="https://wa.me/?text=${encTitle}%20${encUrl}" target="_blank" style="background:#25D366;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">واتساب</a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=${encUrl}" target="_blank" style="background:#1877F2;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">فيسبوك</a>
+    <a href="https://twitter.com/intent/tweet?text=${encTitle}&url=${encUrl}" target="_blank" style="background:#000;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">X</a>
+    <a href="https://t.me/share/url?url=${encUrl}&text=${encTitle}" target="_blank" style="background:#26A5E4;color:#fff;padding:8px 14px;border-radius:100px;text-decoration:none;font-size:13px">تليجرام</a>
+    <button onclick="navigator.clipboard.writeText('${url}');this.textContent='✅ تم النسخ';setTimeout(()=>this.textContent='🔗 نسخ الرابط',2000)" style="background:#333;color:#fff;padding:8px 14px;border-radius:100px;border:none;cursor:pointer;font-size:13px">🔗 نسخ الرابط</button>
+  </div>`;
+}
+
 document.addEventListener('DOMContentLoaded', async ()=>{
   const id=new URLSearchParams(location.search).get('id');
   if(!id){ document.getElementById('title').textContent='مقال غير موجود'; return; }
@@ -91,6 +107,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
     // إعلان الناشر صاحب المقال
     const ownerId = a.owner_id || a.author_id;
+    // مشاركة
+    document.getElementById("share-wrap").innerHTML = shareButtons(a.title, location.href);
+
     if(ownerId){
       const publisherAds=await fetchAds('reader', ownerId).then(async r=>{ 
         if(r.length) return r; 
