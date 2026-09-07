@@ -27,64 +27,147 @@
 <link rel="stylesheet" href="css/style.css">
 <style>
 .pub-wrap{max-width:1100px;margin:0 auto;padding:20px}
-.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
-.action-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;text-decoration:none;display:block;transition:0.2s}
-.action-card:hover{border-color:#ff6b00;transform:translateY(-2px)}
-.action-card b{font-size:40px;display:block;margin-bottom:8px}
-.action-card span{color:#fff;font-weight:700}
-.action-card small{color:#888;display:block;margin-top:4px;font-size:12px}
-.action-card.primary{background:linear-gradient(135deg,#ff6b00,#ff8c00);border-color:#ff6b00}
-.action-card.primary span,.action-card.primary small{color:#fff}
-.form-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:20px 0}
-.form-card h3{margin-bottom:16px;color:#ff6b00}
-.input{width:100%;background:#0f0f0f;border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;margin-bottom:12px}
-.btn{padding:10px 20px;border-radius:100px;border:none;cursor:pointer;font-weight:700}
-.btn-orange{background:#ff6b00;color:#fff}
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;text-decoration:none;display:block;color:#fff}
+.action-card.primary{background:linear-gradient(135deg,#ff6b00,#ff8c00)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;position:relative}
+.card img{width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:8px}
+.card-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600}
+.btn-edit{background:#3b82f6;color:#fff} .btn-del{background:#ef4444;color:#fff} .btn-view{background:#222;color:#fff}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;place-items:center;z-index:100}
+.modal.active{display:grid}
+.modal-box{background:#111;border:1px solid #333;border-radius:16px;padding:20px;max-width:500px;width:90%}
+.input{width:100%;background:#0f0f0f;border:1px solid var(--border);border-radius:8px;padding:10px;color:#fff;margin-bottom:10px}
 </style>
 </head>
 <body>
-<header><h1>📚 رفوف - الناشر</h1><nav><a href="index.html">الرئيسية</a><a href="profile.html">بروفايلي</a><a href="publisher-ads.html">إعلاناتي</a><a href="#" onclick="logout()">خروج</a></nav></header>
+<header><h1>📚 رفوف - الناشر</h1><nav><a href="index.html">الرئيسية</a><a href="profile.html">بروفايلي</a><a href="publisher-ads.html">إعلاناتي 💰</a><a href="#" onclick="logout()">خروج</a></nav></header>
 <div class="pub-wrap">
-  <h2 id="welcome">مرحباً، ناشر 👋</h2>
+  <h2 id="welcome">مرحباً 👋</h2>
   <div class="quick-actions">
-    <a href="upload-book.html" class="action-card primary"><b>📚</b><span>ارفع كتاب جديد</span><small>PDF أو EPUB + غلاف</small></a>
-    <a href="#article-section" class="action-card"><b>📝</b><span>اكتب مقالة</span><small>انشر مقال مباشرة</small></a>
-    <a href="profile.html" class="action-card"><b>👤</b><span>بروفايلي</span><small>صورتك ونبذتك</small></a>
-    <a href="publisher-ads.html" class="action-card"><b>💰</b><span>أرباحي</span><small>إعلاناتك</small></a>
+    <a href="upload-book.html" class="action-card primary">📚 + ارفع كتاب</a>
+    <a href="#article-form" class="action-card">📝 + اكتب مقال</a>
+    <a href="publisher-ads.html" class="action-card">💰 إعلاناتي وأرباحي</a>
+    <a href="author.html" id="publicPageLink" class="action-card">👤 صفحتي العامة</a>
   </div>
 
-  <div class="form-card" id="article-section">
-    <h3>📝 كتابة مقالة جديدة - سريعة</h3>
+  <div class="card" id="article-form" style="margin:20px 0">
+    <h3 style="color:#ff6b00">📝 اكتب مقال جديد</h3>
     <input id="article-title" class="input" placeholder="عنوان المقال">
-    <textarea id="article-content" class="input" rows="6" placeholder="اكتب محتوى المقال هنا..."></textarea>
+    <textarea id="article-content" class="input" rows="5" placeholder="محتوى المقال..."></textarea>
     <input id="article-cover" type="file" accept="image/*" class="input">
-    <button class="btn btn-orange" onclick="uploadArticle()">نشر المقال الآن 🚀</button>
-    <div id="article-status" style="margin-top:10px"></div>
+    <button class="btn" style="background:#ff6b00;color:#fff;width:100%;padding:10px" onclick="createArticle()">نشر المقال 🚀</button>
+    <div id="article-status"></div>
   </div>
 
-  <h3>📚 كتبي المنشورة</h3>
+  <h3>📚 كتبي (<span id="booksCount">0</span>)</h3>
   <div id="my-books" class="grid"><p style="color:#666">جاري التحميل...</p></div>
-  <h3 style="margin-top:30px">📝 مقالاتي</h3>
+
+  <h3 style="margin-top:30px">📝 مقالاتي (<span id="artsCount">0</span>)</h3>
   <div id="my-articles" class="grid"><p style="color:#666">جاري التحميل...</p></div>
 </div>
+
+<!-- Modal تعديل -->
+<div id="editModal" class="modal" onclick="if(event.target===this) closeModal()">
+  <div class="modal-box">
+    <h3 id="modalTitle">تعديل</h3>
+    <input id="editTitle" class="input" placeholder="العنوان">
+    <input id="editAuthor" class="input" placeholder="المؤلف (للكتب فقط)">
+    <textarea id="editDesc" class="input" rows="4" placeholder="الوصف أو المحتوى"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="background:#22c55e;color:#fff;flex:1" onclick="saveEdit()">💾 حفظ التعديل</button>
+      <button class="btn" style="background:#333;color:#fff;flex:1" onclick="closeModal()">إلغاء</button>
+    </div>
+    <div id="editStatus"></div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
-<script src="js/auth.js"></script>
 <script>
-async function loadMyContent(){
+let editingType=null, editingId=null;
+let currentUser=null;
+
+async function loadAll(){
+  const u = JSON.parse(localStorage.getItem('user')||'{}');
+  currentUser = u;
+  document.getElementById('welcome').textContent = `مرحباً، ${u.display_name||u.name||u.email} 👋`;
+  if(u.id) document.getElementById('publicPageLink').href='author.html?id='+u.id;
+  
   try{
-    const user = getUser(); if(!user) { location.href='login.html'; return; }
-    document.getElementById('welcome').textContent = `مرحباً، ${user.display_name||user.name||user.email} 👋`;
-    const books = await apiGet('/api/books?author_id='+user.id).catch(()=>[]).then(r=>Array.isArray(r)?r:[]);
-    const myBooks = books.length ? books : await apiGet('/api/books').then(all=>all.filter(b=>b.author_id==user.id)).catch(()=>[]);
-    document.getElementById('my-books').innerHTML = myBooks.length ? myBooks.map(b=>`<div class="card"><h4>${b.title}</h4><small>${b.author||''}</small><br><a href="reader.html?id=${b.id}" style="color:#ff6b00">اقرأ →</a></div>`).join('') : '<p style="color:#666">لم تنشر أي كتب بعد. <a href="upload-book.html" style="color:#ff6b00">ارفع أول كتاب</a></p>';
-    const articles = await apiGet('/api/articles?author_id='+user.id).catch(()=>[]).then(r=>Array.isArray(r)?r:[]);
-    const myArticles = articles.length ? articles : await apiGet('/api/articles').then(all=>all.filter(a=>a.author_id==user.id)).catch(()=>[]);
-    document.getElementById('my-articles').innerHTML = myArticles.length ? myArticles.map(a=>`<div class="card"><h4>${a.title}</h4><a href="article.html?id=${a.id}" style="color:#ff6b00">اقرأ →</a></div>`).join('') : '<p style="color:#666">لم تنشر أي مقالات بعد.</p>';
-  }catch(e){ console.log(e); }
+    const books = await apiGet('/api/books?author_id='+u.id).catch(()=>[]).then(r=>Array.isArray(r)?r:(r.books||[]));
+    const myBooks = Array.isArray(books) ? books : [];
+    document.getElementById('booksCount').textContent=myBooks.length;
+    document.getElementById('my-books').innerHTML = myBooks.length ? myBooks.map(b=>`
+      <div class="card">
+        ${b.cover_url?`<img src="${b.cover_url}">`:`<div style="height:140px;background:#222;border-radius:8px;display:grid;place-items:center">📚</div>`}
+        <h4>${b.title}</h4><small style="color:#888">${b.author||''}</small>
+        <div class="card-actions">
+          <a class="btn btn-view" href="reader.html?id=${b.id}">عرض</a>
+          <button class="btn btn-edit" onclick="openEdit('book',${b.id}, \`${(b.title||'').replace(/`/g,'')} \`, \`${(b.author||'').replace(/`/g,'')} \`, \`${(b.description||'').replace(/`/g,'').slice(0,200)} \`)">تعديل</button>
+          <button class="btn btn-del" onclick="delBook(${b.id})">حذف</button>
+        </div>
+      </div>
+    `).join('') : '<p style="color:#666">لم تنشر كتب بعد <a href="upload-book.html" style="color:#ff6b00">ارفع أول كتاب</a></p>';
+  }catch(e){ document.getElementById('my-books').innerHTML='<p>خطأ: '+e.message+'</p>'; }
+
+  try{
+    const arts = await apiGet('/api/articles?author_id='+u.id).catch(()=>[]).then(r=>Array.isArray(r)?r:(r.articles||[]));
+    const myArts = Array.isArray(arts) ? arts : [];
+    document.getElementById('artsCount').textContent=myArts.length;
+    document.getElementById('my-articles').innerHTML = myArts.length ? myArts.map(a=>`
+      <div class="card">
+        ${a.cover_url?`<img src="${a.cover_url}">`:''}
+        <h4>${a.title}</h4>
+        <div class="card-actions">
+          <a class="btn btn-view" href="article.html?id=${a.id}">عرض</a>
+          <button class="btn btn-edit" onclick="openEdit('article',${a.id}, \`${(a.title||'').replace(/`/g,'')} \`, '', \`${(a.content||'').replace(/`/g,'').slice(0,300)} \`)">تعديل</button>
+          <button class="btn btn-del" onclick="delArticle(${a.id})">حذف</button>
+        </div>
+      </div>
+    `).join('') : '<p style="color:#666">لم تنشر مقالات بعد</p>';
+  }catch(e){ document.getElementById('my-articles').innerHTML='<p>خطأ: '+e.message+'</p>'; }
 }
-async function uploadArticle(){
+
+function openEdit(type,id,title,author,desc){
+  editingType=type; editingId=id;
+  document.getElementById('modalTitle').textContent = type==='book' ? 'تعديل الكتاب' : 'تعديل المقال';
+  document.getElementById('editTitle').value=title.trim();
+  document.getElementById('editAuthor').value=author.trim();
+  document.getElementById('editAuthor').style.display = type==='book' ? 'block' : 'none';
+  document.getElementById('editDesc').value=desc.trim();
+  document.getElementById('editDesc').placeholder = type==='book' ? 'وصف الكتاب' : 'محتوى المقال';
+  document.getElementById('editModal').classList.add('active');
+}
+function closeModal(){ document.getElementById('editModal').classList.remove('active'); editingType=null; editingId=null; }
+
+async function saveEdit(){
+  const title=document.getElementById('editTitle').value.trim();
+  const author=document.getElementById('editAuthor').value.trim();
+  const desc=document.getElementById('editDesc').value.trim();
+  if(!title){ alert('العنوان مطلوب'); return; }
+  document.getElementById('editStatus').textContent='جاري الحفظ...';
+  try{
+    if(editingType==='book'){
+      await apiPut('/api/books/'+editingId, {title, author, description: desc});
+    } else {
+      await apiPut('/api/articles/'+editingId, {title, content: desc});
+    }
+    document.getElementById('editStatus').textContent='✅ تم الحفظ';
+    setTimeout(()=>{ closeModal(); loadAll(); }, 800);
+  }catch(e){ document.getElementById('editStatus').textContent='❌ '+e.message; }
+}
+
+async function delBook(id){
+  if(!confirm('متأكد تحذف الكتاب ده؟ لا يمكن التراجع')) return;
+  try{ await apiDelete('/api/books/'+id); loadAll(); }catch(e){ alert(e.message); }
+}
+async function delArticle(id){
+  if(!confirm('متأكد تحذف المقال ده؟')) return;
+  try{ await apiDelete('/api/articles/'+id); loadAll(); }catch(e){ alert(e.message); }
+}
+async function createArticle(){
   const title=document.getElementById('article-title').value.trim();
   const content=document.getElementById('article-content').value.trim();
   const coverFile=document.getElementById('article-cover').files[0];
@@ -94,12 +177,11 @@ async function uploadArticle(){
     let cover_url='';
     if(coverFile){ const up=await uploadFile(coverFile); cover_url=up.url; }
     const res=await apiPost('/api/articles',{title,content,cover_url});
-    if(res.id||res.success){ document.getElementById('article-status').textContent='✅ تم نشر المقال!'; document.getElementById('article-title').value=''; document.getElementById('article-content').value=''; loadMyContent(); }
-    else document.getElementById('article-status').textContent='❌ '+(res.error||'خطأ');
+    if(res.id||res.success){ document.getElementById('article-status').textContent='✅ تم النشر'; document.getElementById('article-title').value=''; document.getElementById('article-content').value=''; loadAll(); }
   }catch(e){ document.getElementById('article-status').textContent='❌ '+e.message; }
 }
 function logout(){ localStorage.clear(); location.href='login.html'; }
-loadMyContent();
+loadAll();
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
