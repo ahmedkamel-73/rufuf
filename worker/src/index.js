@@ -268,20 +268,30 @@ export default {
       }
     }
 
-    // SECURITY: /cdn/ now only for public images (covers)
+    // CDN FIXED V18 - handles old bad keys with | and // and encoded chars
     if (url.pathname.startsWith('/cdn/') && method === 'GET') {
-      const key = url.pathname.replace('/cdn/','');
+      let key = url.pathname.replace('/cdn/','');
+      try { key = decodeURIComponent(key); } catch(e){}
       if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      // Only allow images
-      if (!key.match(/\.(jpg|jpeg|png|webp|gif)$/i) && !key.includes('_')) {
-        // Allow but check metadata
+      // Try exact key first, then try to handle old malformed keys
+      let obj = await env.R2.get(key);
+      if (!obj && key.includes('%')) {
+        try { obj = await env.R2.get(decodeURIComponent(key)); } catch(e){}
       }
-      const obj = await env.R2.get(key);
-      if (!obj) return new Response('Not found', { status: 404 });
-      // SECURITY: Only serve if marked public or image type
-      const contentType = obj.httpMetadata?.contentType || '';
-      if (!ALLOWED_IMAGE_TYPES.includes(contentType) && !contentType.startsWith('image/')) {
-        return new Response('Forbidden - use /api/file for books', { status: 403 });
+      // If still not found and key contains |, try key as-is with | (old bug keys)
+      if (!obj) {
+        // Last resort: list-like fallback - try without query params
+        const cleanKey = key.split('?')[0];
+        if (cleanKey !== key) obj = await env.R2.get(cleanKey);
+      }
+      if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
+      const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
+      // Allow any image/* now
+      if (!contentType.startsWith('image/') && !ALLOWED_IMAGE_TYPES.includes(contentType)) {
+        // Still serve if it's image extension
+        if (!key.match(/\.(jpg|jpeg|png|webp|gif|png)$/i) && !contentType.includes('image')) {
+          return new Response('Forbidden - use /api/file for books', { status: 403 });
+        }
       }
       return new Response(obj.body, { 
         headers: { 
