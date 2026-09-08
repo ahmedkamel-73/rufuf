@@ -309,12 +309,8 @@ export default {
       const obj = await env.R2.get(key);
       if (!obj) return new Response('Not found', { status: 404 });
       
-      // For books, require auth (except if public cover)
       const contentType = obj.httpMetadata?.contentType || '';
-      if (ALLOWED_BOOK_TYPES.includes(contentType)) {
-        const user = await getUserFromReq(request, env);
-        if (!user) return new Response('Unauthorized - سجل دخول لقراءة الكتاب', { status: 401 });
-      }
+      // V19 PUBLIC: guest reading allowed, no auth
       
       return new Response(obj.body, { 
         headers: { 
