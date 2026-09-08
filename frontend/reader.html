@@ -45,7 +45,7 @@ a{color:inherit}
 /* Viewer */
 .viewer{max-width:900px;margin:0 auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px;padding-bottom:120px}
 .page{background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 6px 25px rgba(0,0,0,.5);position:relative}
-.page canvas{display:block;width:100% !important;height:auto !important}
+.page canvas{display:block;width:100% !important;height:auto !important;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges}
 .page-label{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:2px 8px;border-radius:20px}
 /* Ads */
 .ad{max-width:900px;margin:12px auto;padding:12px;background:#111;border:1px dashed #444;border-radius:12px;text-align:center;font-size:13px}
@@ -101,7 +101,7 @@ body.night .topbar, body.night .ad, body.night .share-box, body.night .floating-
 
 <script src="js/api.js"></script><script src="js/ads.js"></script>
 <script>
-let pdf=null, cur=1, total=0, scale=1.2, book=null, bookId=null;
+let pdf=null, cur=1, total=0, scale=1.8, book=null, bookId=null;
 let lastScroll=0;
 async function load(){
  bookId=new URLSearchParams(location.search).get('id');
@@ -126,7 +126,14 @@ async function load(){
 }
 async function loadPDF(url){
  try{
-  const task=pdfjsLib.getDocument({url:url}); pdf=await task.promise;
+  const task=pdfjsLib.getDocument({
+    url:url,
+    cMapUrl:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/cmaps/',
+    cMapPacked:true,
+    standardFontDataUrl:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/standard_fonts/',
+    enableXfa:false
+  });
+  pdf=await task.promise;
   total=pdf.numPages; document.getElementById('pageCount').textContent=total; document.getElementById('pageNum').max=total;
   renderAll();
  }catch(e){
@@ -135,12 +142,30 @@ async function loadPDF(url){
 }
 async function renderAll(){
  const viewer=document.getElementById('viewer'); viewer.innerHTML='';
+ const dpr = window.devicePixelRatio || 1;
  for(let i=1;i<=total;i++){
   const div=document.createElement('div'); div.className='page'; div.id='p'+i;
-  const canvas=document.createElement('canvas'); div.appendChild(canvas);
+  const canvas=document.createElement('canvas'); 
+  div.appendChild(canvas);
   const lab=document.createElement('div'); lab.className='page-label'; lab.textContent='صفحة '+i; div.appendChild(lab);
   viewer.appendChild(div);
-  const obs=new IntersectionObserver(async (es)=>{if(es[0].isIntersecting){obs.disconnect(); try{const page=await pdf.getPage(i); const vp=page.getViewport({scale:scale}); canvas.width=vp.width; canvas.height=vp.height; await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;}catch(e){}}},{rootMargin:'600px'});
+  const obs=new IntersectionObserver(async (es)=>{
+    if(es[0].isIntersecting){
+      obs.disconnect(); 
+      try{
+        const page=await pdf.getPage(i); 
+        const viewport=page.getViewport({scale:scale});
+        // High-res for Arabic
+        canvas.width=viewport.width * dpr * 1.5;
+        canvas.height=viewport.height * dpr * 1.5;
+        canvas.style.width='100%';
+        canvas.style.height='auto';
+        const ctx=canvas.getContext('2d');
+        ctx.setTransform(dpr*1.5,0,0,dpr*1.5,0,0);
+        await page.render({canvasContext:ctx,viewport:viewport}).promise;
+      }catch(e){console.error('page render error',i,e);}
+    }
+  },{rootMargin:'800px'});
   obs.observe(div);
  }
 }
