@@ -24,78 +24,113 @@
 </style>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="t">القارئ - رفوف</title>
-<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
 <style>
-body{margin:0;background:#0f0f0f;color:#eee;font-family:Cairo,system-ui}
-.header{background:#111;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:2px solid #ff6b00;flex-wrap:wrap;gap:8px}
-.btn{background:#222;border:1px solid #333;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px}
-.btn.orange{background:#ff6b00;border-color:#ff6b00}
-.viewer{max-width:900px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
-.page{background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.5);position:relative}
-.ad{max-width:900px;margin:10px auto;padding:10px;background:#111;border:1px dashed #444;border-radius:8px;text-align:center;font-size:13px}
-.ad.p{border-color:#ff6b00} .ad.pub{border-color:#22c55e;background:#0f1a0f}
-.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;background:#111;border:1px solid #222;padding:8px;border-radius:12px;margin:10px auto;max-width:900px}
-.toolbar input{width:60px;background:#222;border:1px solid #333;color:#fff;border-radius:6px;padding:4px;text-align:center}
-.share{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.share a{padding:6px 12px;border-radius:20px;color:#fff;text-decoration:none;font-size:12px}
+*{box-sizing:border-box}
+body{margin:0;background:#0a0a0a;color:#eee;font-family:'Cairo',system-ui,sans-serif;line-height:1.6}
+a{color:inherit}
+/* Header top */
+.topbar{background:#111;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;border-bottom:2px solid #ff6b00}
+.topbar .title{flex:1;text-align:center;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{background:#1e1e1e;border:1px solid #333;color:#fff;padding:7px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-family:'Cairo';transition:0.2s}
+.btn:hover{background:#2a2a2a} .btn.orange{background:#ff6b00;border-color:#ff6b00;color:#fff}
+/* Floating toolbar */
+.floating-toolbar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid #333;border-radius:100px;padding:8px 12px;display:flex;gap:6px;align-items:center;z-index:90;box-shadow:0 8px 30px rgba(0,0,0,.6);transition:transform 0.3s, opacity 0.3s}
+.floating-toolbar.hide{transform:translate(-50%,100px);opacity:0}
+.floating-toolbar input{width:55px;background:#111;border:1px solid #333;color:#fff;border-radius:8px;padding:5px;text-align:center;font-family:'Cairo'}
+.floating-toolbar .sep{width:1px;height:20px;background:#333;margin:0 2px}
+.zoom-label{font-size:11px;min-width:36px;text-align:center;color:#aaa}
+/* Viewer */
+.viewer{max-width:900px;margin:0 auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px;padding-bottom:120px}
+.page{background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 6px 25px rgba(0,0,0,.5);position:relative}
+.page canvas{display:block;width:100% !important;height:auto !important}
+.page-label{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:2px 8px;border-radius:20px}
+/* Ads */
+.ad{max-width:900px;margin:12px auto;padding:12px;background:#111;border:1px dashed #444;border-radius:12px;text-align:center;font-size:13px}
+.ad.p{border-color:#ff6b00} .ad.pub{border-color:#22c55e;background:#0e1a0e}
+/* Share inside reader */
+.share-box{background:#111;border:1px solid #222;border-radius:14px;padding:12px;margin:12px auto;max-width:900px}
+.share-box h4{margin:0 0 8px;font-size:13px;color:#ff6b00}
+.share-row{display:flex;gap:8px;flex-wrap:wrap}
+.share-row a,.share-row button{padding:8px 14px;border-radius:100px;color:#fff;text-decoration:none;font-size:13px;border:none;cursor:pointer;font-family:'Cairo';display:inline-flex;align-items:center;gap:6px}
+.wa{background:#25D366} .fb{background:#1877F2} .tg{background:#26A5E4} .cp{background:#2a2a2a;border:1px solid #333 !important} .author{background:#ff6b00}
+/* Night mode - without breaking fonts */
+body.night{background:#000}
+body.night .page{filter:brightness(0.85) contrast(1.1)}
+body.night .topbar, body.night .ad, body.night .share-box, body.night .floating-toolbar{background:#0a0a0a}
 </style>
 </head>
 <body>
-<div class="header">
-<button class="btn" onclick="location.href='index.html'">🏠 الرئيسية</button>
-<div id="info" style="flex:1;text-align:center"><span id="bookTitle">جاري التحميل...</span><br><small id="bookAuthor" style="color:#888"></small></div>
-<div><button class="btn" onclick="toggleNight()" id="nightBtn">🌙</button><button class="btn" onclick="toggleFull()">⛶</button></div>
+<div class="topbar">
+<button class="btn" onclick="location.href='index.html'">🏠</button>
+<div class="title"><span id="bookTitle">جاري التحميل...</span><br><small id="bookAuthor" style="color:#888;font-weight:400;font-size:12px"></small></div>
+<div style="display:flex;gap:6px"><button class="btn" onclick="toggleNight()" id="nightBtn">🌙</button><button class="btn" onclick="toggleFull()">⛶</button></div>
 </div>
 
 <div class="ad p" id="ad1">إعلان المنصة</div>
 <div class="ad pub" id="ad2">إعلان الناشر 💰</div>
 
-<div class="toolbar">
-<button class="btn" onclick="prev()">السابق</button>
-<input id="pageNum" type="number" value="1" min="1"> / <span id="pageCount">--</span>
-<button class="btn" onclick="next()">التالي</button>
-<button class="btn" onclick="zoom(-0.2)">- تكبير</button><span id="zoomLab">100%</span><button class="btn" onclick="zoom(0.2)">+ تكبير</button>
+<div class="share-box">
+<h4>📤 شارك هذا الكتاب</h4>
+<div class="share-row" id="shareTop"></div>
 </div>
 
-<div id="shareTop" class="share"></div>
-<div id="viewer" class="viewer"><p style="text-align:center;color:#888;padding:40px">📖 جاري تحميل الكتاب...</p></div>
-<div id="shareBot" class="share"></div>
+<div id="viewer" class="viewer"><p style="text-align:center;color:#666;padding:60px">📖 جاري تحميل الكتاب...<br><small>لو تأخر، تأكد أنك رفعت worker V19</small></p></div>
+
+<div class="share-box">
+<h4>📤 عجبك الكتاب؟ شاركه</h4>
+<div class="share-row" id="shareBot"></div>
+</div>
 
 <div class="ad pub" id="ad3">إعلان الناشر 💰 أسفل</div>
 <div class="ad p" id="ad4">إعلان المنصة أسفل</div>
+<div style="height:100px"></div>
+
+<!-- Floating toolbar - عائم مع الصعود والهبوط -->
+<div class="floating-toolbar" id="floatBar">
+<button class="btn" onclick="prev()">›</button>
+<input id="pageNum" type="number" value="1" min="1"> / <span id="pageCount" style="font-size:12px;color:#aaa">--</span>
+<button class="btn" onclick="next()">‹</button>
+<div class="sep"></div>
+<button class="btn" onclick="zoom(-0.2)">-</button><span class="zoom-label" id="zoomLab">110%</span><button class="btn" onclick="zoom(0.2)">+</button>
+<div class="sep"></div>
+<button class="btn" onclick="document.getElementById('viewer').scrollIntoView({behavior:'smooth'})">🔝</button>
+</div>
 
 <script src="js/api.js"></script><script src="js/ads.js"></script>
 <script>
-let pdf=null, cur=1, total=0, scale=1.1, book=null, bookId=null;
+let pdf=null, cur=1, total=0, scale=1.2, book=null, bookId=null;
+let lastScroll=0;
 async function load(){
  bookId=new URLSearchParams(location.search).get('id');
  if(!bookId){document.getElementById('viewer').innerHTML='لم تحدد كتاب';return;}
  try{
-  const res=await fetch('/api/books/'+bookId); const data=await res.json();
+  const data=await fetch('/api/books/'+bookId).then(r=>r.json());
   if(data.error){document.getElementById('viewer').innerHTML=data.error;return;}
   book=data;
   document.getElementById('bookTitle').textContent=data.title;
   document.getElementById('bookAuthor').textContent=data.author||'';
   document.getElementById('t').textContent=data.title+' - رفوف';
   const url=location.href;
-  const sh=`<a href="https://wa.me/?text=${encodeURIComponent(data.title+' '+url)}" target="_blank" style="background:#25D366">واتساب</a><a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" target="_blank" style="background:#1877F2">فيسبوك</a><a href="https://t.me/share/url?url=${encodeURIComponent(url)}" target="_blank" style="background:#26A5E4">تليجرام</a><a href="#" onclick="navigator.clipboard.writeText('${url}');alert('تم النسخ');return false" style="background:#333">نسخ الرابط</a>`;
+  const encUrl=encodeURIComponent(url);
+  const encTitle=encodeURIComponent(data.title);
+  const authorLink=data.owner_id?`author.html?id=${data.owner_id}`:'index.html';
+  const sh=`<a class="wa" href="https://wa.me/?text=${encTitle}%20${encUrl}" target="_blank">واتساب</a><a class="fb" href="https://www.facebook.com/sharer/sharer.php?u=${encUrl}" target="_blank">فيسبوك</a><a class="tg" href="https://t.me/share/url?url=${encUrl}&text=${encTitle}" target="_blank">تليجرام</a><button class="cp" onclick="navigator.clipboard.writeText('${url}');this.textContent='✅ تم النسخ';setTimeout(()=>this.textContent='🔗 نسخ الرابط',2000)">🔗 نسخ الرابط</button><a class="author" href="${authorLink}">👤 صفحة الناشر</a>`;
   document.getElementById('shareTop').innerHTML=sh; document.getElementById('shareBot').innerHTML=sh;
   try{const pAds=await fetchAds('reader'); if(pAds[0]) renderAd(pAds[0],'ad1'); if(pAds[1]) renderAd(pAds[1],'ad4'); if(data.owner_id){const pub=await fetchAds('reader',data.owner_id); if(pub[0]) renderAd(pub[0],'ad2'); if(pub[1]) renderAd(pub[1],'ad3');}}catch(e){}
-  if(!data.file_url){document.getElementById('viewer').innerHTML='<p style="text-align:center;color:#888">لا يوجد ملف PDF<br>'+(data.description||'')+'</p>';return;}
+  if(!data.file_url){document.getElementById('viewer').innerHTML='<p style="text-align:center;color:#888">'+(data.description||'لا يوجد ملف')+'</p>';return;}
   await loadPDF(data.file_url);
  }catch(e){document.getElementById('viewer').innerHTML='خطأ: '+e.message;}
 }
 async function loadPDF(url){
  try{
-  console.log('loading pdf', url);
-  const task=pdfjsLib.getDocument({url:url, withCredentials:false}); pdf=await task.promise;
-  total=pdf.numPages; document.getElementById('pageCount').textContent=total; document.getElementById('pageNum').value=1; document.getElementById('pageNum').max=total;
+  const task=pdfjsLib.getDocument({url:url}); pdf=await task.promise;
+  total=pdf.numPages; document.getElementById('pageCount').textContent=total; document.getElementById('pageNum').max=total;
   renderAll();
  }catch(e){
-  console.error(e);
-  document.getElementById('viewer').innerHTML=`<div style="text-align:center;padding:30px;color:#ef4444">فشل فتح القارئ المدمج<br><small>${e.message}</small><br><br><a href="${url}" target="_blank" class="btn orange">📥 تحميل الكتاب بدلاً من ذلك</a><br><br><small style="color:#666">لو استمرت المشكلة: تأكد أن worker V19 اترفع</small></div>`;
+  document.getElementById('viewer').innerHTML=`<div style="text-align:center;padding:30px;color:#ef4444">فشل فتح القارئ<br><small>${e.message}</small><br><br><a href="${url}" target="_blank" class="btn orange">تحميل</a></div>`;
  }
 }
 async function renderAll(){
@@ -103,18 +138,30 @@ async function renderAll(){
  for(let i=1;i<=total;i++){
   const div=document.createElement('div'); div.className='page'; div.id='p'+i;
   const canvas=document.createElement('canvas'); div.appendChild(canvas);
-  const lab=document.createElement('div'); lab.textContent='صفحة '+i; lab.style='position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px'; div.appendChild(lab);
+  const lab=document.createElement('div'); lab.className='page-label'; lab.textContent='صفحة '+i; div.appendChild(lab);
   viewer.appendChild(div);
-  const obs=new IntersectionObserver(async (es)=>{if(es[0].isIntersecting){obs.disconnect(); try{const page=await pdf.getPage(i); const vp=page.getViewport({scale:scale}); canvas.width=vp.width; canvas.height=vp.height; canvas.style.width='100%'; await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;}catch(e){}}},{rootMargin:'500px'});
+  const obs=new IntersectionObserver(async (es)=>{if(es[0].isIntersecting){obs.disconnect(); try{const page=await pdf.getPage(i); const vp=page.getViewport({scale:scale}); canvas.width=vp.width; canvas.height=vp.height; await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;}catch(e){}}},{rootMargin:'600px'});
   obs.observe(div);
  }
 }
-function zoom(d){scale=Math.min(3,Math.max(0.5,scale+d)); document.getElementById('zoomLab').textContent=Math.round(scale*100)+'%'; renderAll();}
-function prev(){if(cur>1){cur--; document.getElementById('pageNum').value=cur; document.getElementById('p'+cur)?.scrollIntoView({behavior:'smooth'});}}
-function next(){if(cur<total){cur++; document.getElementById('pageNum').value=cur; document.getElementById('p'+cur)?.scrollIntoView({behavior:'smooth'});}}
+function zoom(d){scale=Math.min(3,Math.max(0.6,scale+d)); document.getElementById('zoomLab').textContent=Math.round(scale*100)+'%'; renderAll();}
+function prev(){if(cur>1){cur--; document.getElementById('pageNum').value=cur; document.getElementById('p'+cur)?.scrollIntoView({behavior:'smooth',block:'start'});}}
+function next(){if(cur<total){cur++; document.getElementById('pageNum').value=cur; document.getElementById('p'+cur)?.scrollIntoView({behavior:'smooth',block:'start'});}}
 document.getElementById('pageNum').addEventListener('change',e=>{let p=parseInt(e.target.value); if(p>=1&&p<=total){cur=p; document.getElementById('p'+p)?.scrollIntoView({behavior:'smooth'});}});
-function toggleNight(){document.body.style.filter=document.body.style.filter?'':'invert(0.9) hue-rotate(180deg)'; document.body.style.background=document.body.style.filter?'#000':'#0f0f0f';}
+function toggleNight(){document.body.classList.toggle('night'); localStorage.setItem('rufuf_night', document.body.classList.contains('night')); document.getElementById('nightBtn').textContent=document.body.classList.contains('night')?'☀️':'🌙';}
 function toggleFull(){if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen();}
+// Floating toolbar hide/show on scroll
+let ticking=false;
+window.addEventListener('scroll',()=>{
+ if(!ticking){requestAnimationFrame(()=>{const st=window.scrollY||document.documentElement.scrollTop; const bar=document.getElementById('floatBar'); if(st>lastScroll && st>200){bar.classList.add('hide');} else {bar.classList.remove('hide');} lastScroll=st<=0?0:st; ticking=false;}); ticking=true;}
+});
+// update current page on scroll
+window.addEventListener('scroll',()=>{
+ const pages=document.querySelectorAll('.page'); let closest=cur, min=Infinity;
+ pages.forEach((p,i)=>{const r=p.getBoundingClientRect(); const d=Math.abs(r.top); if(d<min && r.top<=300){min=d; closest=i+1;}});
+ if(closest!==cur){cur=closest; const inp=document.getElementById('pageNum'); if(inp) inp.value=cur;}
+});
+if(localStorage.getItem('rufuf_night')==='true'){document.body.classList.add('night'); document.getElementById('nightBtn').textContent='☀️';}
 load();
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
