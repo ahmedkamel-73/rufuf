@@ -26,6 +26,30 @@ export class ForumRoom {
 // ===== SECURITY CONSTANTS =====
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// V25: Safe key decoder for broken image keys with | and //
+function safeDecodeKey(encoded) {
+  try {
+    let k = decodeURIComponent(encoded);
+    // Try direct, if not found try variants
+    return k;
+  } catch(e) {
+    try { return decodeURIComponent(encoded.replace(/\|/g, '%7C')); } catch(e2) { return encoded; }
+  }
+}
+function getKeyVariants(key) {
+  const variants = [key];
+  // If key contains |, try with %7C decoded, with _ replacement, with / replacement
+  if (key.includes('|')) {
+    variants.push(key.replace(/\|/g, '/'));
+    variants.push(key.replace(/\|/g, '_'));
+    variants.push(key.replace(/\|\//g, '/'));
+  }
+  // Clean double slashes
+  variants.push(key.replace(/\/\/+/g, '/'));
+  return [...new Set(variants)];
+}
+
 const ALLOWED_BOOK_TYPES = ['application/pdf', 'application/epub+zip'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
