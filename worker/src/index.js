@@ -259,7 +259,7 @@ export default {
         // V14: More permissive - allow any image/* and pdf/epub
         const fileType = (file.type || '').toLowerCase();
         const fileName = (file.name || '').toLowerCase();
-        const isImage = fileType.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif)$/);
+        const isImage = fileType.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif|avif|heic|heif)$/);
         const isBook = fileType.includes('pdf') || fileType.includes('epub') || fileName.match(/\.(pdf|epub)$/) || fileType === 'application/octet-stream';
         
         const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
@@ -274,7 +274,8 @@ export default {
         // SECURITY: Sanitize filename - V15 fixed (was creating keys with / in screenshot)
         const safeName = (file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g,'_').slice(0, 60);
         const ext = safeName.includes('.') ? safeName.split('.').pop().slice(0,10) : (isImage ? 'jpg' : 'pdf');
-        const key = Date.now() + '_' + crypto.randomUUID().slice(0,8) + '_' + Date.now() + '.' + ext;
+        const prefix = isImage ? 'covers/' : 'books/';
+        const key = `${prefix}${Date.now()}-${crypto.randomUUID().slice(0,8)}.${ext}`;
         
         await env.R2.put(key, file.stream(), { 
           httpMetadata: { contentType: file.type },
@@ -292,21 +293,21 @@ export default {
       }
     }
 
-    // CDN FIXED V18 - handles old bad keys with | and // and encoded chars
+    // CDN FIXED V10.1 - handles old bad keys with | and // and encoded chars
     if (url.pathname.startsWith('/cdn/') && method === 'GET') {
-      let key = url.pathname.replace('/cdn/','');
+      let key = url.pathname.replace('/cdn/','').split('?')[0];
       try { key = decodeURIComponent(key); } catch(e){}
+      key = safeDecodeKey(key);
       if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      // Try exact key first, then try to handle old malformed keys
       let obj = await env.R2.get(key);
+      if (!obj) {
+        for (const variant of getKeyVariants(key)) {
+          obj = await env.R2.get(variant);
+          if (obj) break;
+        }
+      }
       if (!obj && key.includes('%')) {
         try { obj = await env.R2.get(decodeURIComponent(key)); } catch(e){}
-      }
-      // If still not found and key contains |, try key as-is with | (old bug keys)
-      if (!obj) {
-        // Last resort: list-like fallback - try without query params
-        const cleanKey = key.split('?')[0];
-        if (cleanKey !== key) obj = await env.R2.get(cleanKey);
       }
       if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
       const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
@@ -631,10 +632,10 @@ export default {
         const file = form.get('file');
         if (!file || !file.size) return json({ error: 'لا يوجد ملف' }, 400);
         if (file.size > 2*1024*1024) return json({ error: 'الصورة كبيرة - حد أقصى 2MB' }, 400);
-        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return json({ error: 'نوع الصورة غير مسموح - JPG, PNG, WEBP فقط' }, 400);
+        if (!file.type.startsWith('image/')) return json({ error: 'نوع الصورة غير مسموح - يجب أن تكون صورة' }, 400);
         const ext = file.name.split('.').pop() || 'jpg';
         const key = `avatars/${user.id}-${Date.now()}.${ext}`;
-        await env.BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+        await env.R2.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
         const avatarUrl = `/cdn/${key}`;
         await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, user.id).run();
         return json({ url: avatarUrl, success: true });
