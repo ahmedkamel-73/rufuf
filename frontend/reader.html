@@ -204,11 +204,15 @@ async function loadBook(){
 
 async function loadPDF(url){
  try{
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
   const task=pdfjsLib.getDocument({
     url:url,
     cMapUrl:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/cmaps/',
     cMapPacked:true,
     standardFontDataUrl:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/standard_fonts/',
+    rangeChunkSize: 65536,
+    disableAutoFetch: false,
+    disableStream: false,
     disableFontFace:false,
     useSystemFonts:false,
     enableXfa:false,
@@ -228,53 +232,89 @@ async function loadPDF(url){
 
 async function renderPage(num){
  if(!pdfDoc) return;
+ try{
+ const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
  const page=await pdfDoc.getPage(num);
  const vp=page.getViewport({scale:currentScale});
- const dpr=window.devicePixelRatio||1;
+ const dpr = isMobile ? 1 : (window.devicePixelRatio||1);
+ const scaleFactor = isMobile ? 1 : 1.2;
  const canvas=document.createElement('canvas');
  const ctx=canvas.getContext('2d');
- canvas.width=vp.width*dpr*1.8;
- canvas.height=vp.height*dpr*1.8;
+ canvas.width=vp.width*dpr*scaleFactor;
+ canvas.height=vp.height*dpr*scaleFactor;
  canvas.style.width=vp.width+'px';
  canvas.style.height=vp.height+'px';
  canvas.className='pdf-page';
- ctx.setTransform(dpr*1.8,0,0,dpr*1.8,0,0);
+ ctx.setTransform(dpr*scaleFactor,0,0,dpr*scaleFactor,0,0);
  await page.render({canvasContext:ctx,viewport:vp}).promise;
  pdfViewer.innerHTML='';
  pdfViewer.appendChild(canvas);
  pageNumInput.value=num;
  currentPage=num;
  localStorage.setItem('progress_'+bookId, num);
+ page.cleanup();
+ }catch(e){ console.error('renderPage error', e); showToast('خطأ في الصفحة '+num); }
 }
 
+let pageObserver = null;
+let renderedPagesSet = new Set();
 async function renderAll(){
  pdfViewer.innerHTML='';
  pageElements=[];
- const dpr=window.devicePixelRatio||1;
+ renderedPagesSet.clear();
+ if(pageObserver){ pageObserver.disconnect(); }
+ const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+ // Create placeholders only
  for(let i=1;i<=totalPages;i++){
-  const page=await pdfDoc.getPage(i);
-  const vp=page.getViewport({scale:currentScale});
-  const canvas=document.createElement('canvas');
-  const ctx=canvas.getContext('2d');
-  canvas.width=vp.width*dpr*1.8;
-  canvas.height=vp.height*dpr*1.8;
-  canvas.style.width='100%';
-  canvas.style.maxWidth='800px';
-  canvas.className='pdf-page';
-  ctx.setTransform(dpr*1.8,0,0,dpr*1.8,0,0);
-  await page.render({canvasContext:ctx,viewport:vp}).promise;
   const wrap=document.createElement('div');
   wrap.className='pdf-page-wrapper';
-  wrap.innerHTML='<div class="pdf-page-label">📄 صفحة '+i+' / '+totalPages+'</div>';
-  wrap.appendChild(canvas);
+  wrap.dataset.pageNum=i;
+  wrap.innerHTML='<div class="pdf-page-label">📄 صفحة '+i+' / '+totalPages+'</div><div class="pdf-page" style="min-height:400px;display:flex;align-items:center;justify-content:center;background:#fff;color:#666">جاري تحميل صفحة '+i+'...</div>';
   pdfViewer.appendChild(wrap);
   pageElements.push({wrap, num:i});
  }
+ // Lazy load with IntersectionObserver
+ pageObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+   if(entry.isIntersecting){
+    const pageNum = parseInt(entry.target.dataset.pageNum);
+    if(!renderedPagesSet.has(pageNum)){
+     renderedPagesSet.add(pageNum);
+     renderSinglePageLazy(pageNum, entry.target);
+    }
+   }
+  });
+ }, {root: container, rootMargin: '500px'});
+ pageElements.forEach(el=> pageObserver.observe(el.wrap));
 }
+async function renderSinglePageLazy(num, wrap){
+ try{
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  const page=await pdfDoc.getPage(num);
+  const vp=page.getViewport({scale:currentScale});
+  const dpr = isMobile ? 1 : (window.devicePixelRatio||1);
+  const scaleFactor = isMobile ? 1 : 1.2;
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=vp.width*dpr*scaleFactor;
+  canvas.height=vp.height*dpr*scaleFactor;
+  canvas.style.width='100%';
+  canvas.style.maxWidth='800px';
+  canvas.className='pdf-page';
+  ctx.setTransform(dpr*scaleFactor,0,0,dpr*scaleFactor,0,0);
+  await page.render({canvasContext:ctx,viewport:vp}).promise;
+  const oldPage = wrap.querySelector('.pdf-page');
+  if(oldPage){ oldPage.replaceWith(canvas); } else { wrap.appendChild(canvas); }
+  page.cleanup();
+ }catch(e){ console.error('lazy render error', e); }
+}
+
 
 function setViewMode(m){
  viewMode=m;
  localStorage.setItem('viewMode',m);
+ renderedPagesSet.clear();
+ if(pageObserver){ pageObserver.disconnect(); }
  if(m==='scrolling'){
   container.classList.add('scrolling-mode');
   document.getElementById('scrollingModeBtn').classList.add('active');
@@ -315,122 +355,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 if(bookId){loadBook(); setTimeout(loadBookmarks,800);}
 </script>
-<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>
-// ===== FIX V27 - منع الكراش على الموبايل بدون ما نمسح أي ميزة =====
-(function(){
-  const originalLoadBook = window.loadBook;
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  
-  // قلل الزوم على الموبايل عشان الرام
-  if(isMobile && typeof window.scale !== 'undefined'){
-    window.scale = 0.9;
-  }
-
-  // Patch pdfjs getDocument to use streaming
-  const originalGetDocument = pdfjsLib.getDocument;
-  pdfjsLib.getDocument = function(params){
-    if(typeof params === 'string'){
-      params = {url: params, rangeChunkSize: 65536, disableAutoFetch: false, disableStream: false};
-    } else if(params && params.url){
-      params.rangeChunkSize = params.rangeChunkSize || 65536;
-      params.disableAutoFetch = false;
-      params.disableStream = false;
-    }
-    return originalGetDocument.call(this, params);
-  };
-
-  // Patch scrolling mode to use IntersectionObserver
-  window.renderAllPagesLazy = function(){
-    const container = document.getElementById('pdfContainer');
-    if(!container || !window.pdfDoc) return;
-    container.innerHTML = '';
-    window.renderedPages = window.renderedPages || new Set();
-    window.renderedPages.clear();
-    
-    for(let i=1;i<=window.totalPages;i++){
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pdf-page-wrapper';
-      wrapper.dataset.page = i;
-      wrapper.innerHTML = `<div class="pdf-page-label">صفحة ${i}</div><div class="pdf-page" style="min-height:300px;display:flex;align-items:center;justify-content:center;color:#666">جاري التحميل...</div>`;
-      container.appendChild(wrapper);
-    }
-    
-    const observer = new IntersectionObserver((entries)=>{
-      entries.forEach(entry=>{
-        if(entry.isIntersecting){
-          const pageNum = parseInt(entry.target.dataset.page);
-          if(!window.renderedPages.has(pageNum)){
-            window.renderedPages.add(pageNum);
-            renderSinglePageLazy(pageNum, entry.target.querySelector('.pdf-page'));
-          }
-        }
-      });
-    }, {root: container, rootMargin: '400px'});
-    
-    container.querySelectorAll('.pdf-page-wrapper').forEach(el=>observer.observe(el));
-  };
-
-  async function renderSinglePageLazy(num, targetDiv){
-    try{
-      const page = await window.pdfDoc.getPage(num);
-      const viewport = page.getViewport({scale: window.scale || (isMobile?0.9:1.2)});
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      targetDiv.innerHTML = '';
-      targetDiv.appendChild(canvas);
-      await page.render({canvasContext: ctx, viewport}).promise;
-      page.cleanup();
-      if(window.pdfDoc.cleanup) window.pdfDoc.cleanup();
-    }catch(e){
-      targetDiv.innerHTML = `<div style="color:red;padding:20px">خطأ صفحة ${num}</div>`;
-    }
-  }
-
-  // Override setViewMode for scrolling to use lazy version
-  const origSetViewMode = window.setViewMode;
-  window.setViewMode = function(mode){
-    window.viewMode = mode;
-    document.getElementById('scrollingModeBtn')?.classList.toggle('active', mode==='scrolling');
-    document.getElementById('paginationModeBtn')?.classList.toggle('active', mode==='pagination');
-    if(mode==='scrolling'){
-      window.renderAllPagesLazy();
-    }else{
-      if(origSetViewMode) return origSetViewMode.call(this, mode);
-    }
-  };
-
-  // Reduce memory on page render
-  const origRenderPage = window.renderPage;
-  window.renderPage = async function(num){
-    if(!window.pdfDoc) return;
-    if(num <1 || num>window.totalPages) return;
-    window.currentPage = num;
-    const pageNumInput = document.getElementById('pageNum');
-    if(pageNumInput) pageNumInput.value = num;
-    const container = document.getElementById('pdfContainer');
-    if(window.viewMode==='pagination'){
-      container.innerHTML = '<div class="pdf-page-wrapper"><div class="pdf-page" id="singlePage" style="min-height:400px;display:flex;align-items:center;justify-content:center">جاري التحميل...</div></div>';
-      const wrapper = document.getElementById('singlePage');
-      try{
-        const page = await window.pdfDoc.getPage(num);
-        const viewport = page.getViewport({scale: window.scale || (isMobile?0.9:1.2)});
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        wrapper.innerHTML='';
-        wrapper.appendChild(canvas);
-        await page.render({canvasContext: ctx, viewport}).promise;
-        page.cleanup();
-      }catch(e){ wrapper.innerHTML='خطأ'; }
-    }else{
-      document.querySelectorAll('.pdf-page-wrapper')[num-1]?.scrollIntoView({behavior:'smooth'});
-    }
-  };
-
-  console.log('✅ FIX V27 loaded - mobile crash prevented, all features kept');
-})();
-</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
