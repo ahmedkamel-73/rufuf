@@ -211,71 +211,52 @@ export default {
     }
 
 
-    // ===== OPEN GRAPH FOR SHARE - FIX V31 - يمسك /reader/?id=5 و /book/?id= و /reader.html?id= =====
-    if ((url.pathname.includes('reader') || url.pathname.includes('book') || url.pathname.includes('article')) && method === 'GET' && (url.searchParams.has('id') || url.pathname.match(/\/(\d+)\/?$/))) {
-      let bookId = url.searchParams.get('id');
-      let articleId = url.searchParams.get('id');
-      // Support /reader/5 /book/5 style
-      if (!bookId) {
-        const match = url.pathname.match(/\/(\d+)\/?$/);
-        if (match) bookId = match[1];
-      }
-      if (!bookId) bookId = articleId;
-      if (bookId || articleId) {
+    // ===== OPEN GRAPH FOR SHARE - FIX V32 SAFE - صور الكتب في الشير =====
+    if ((url.pathname.indexOf('reader') !== -1 || url.pathname.indexOf('book') !== -1 || url.pathname.indexOf('article') !== -1) && method === 'GET' && url.searchParams.has('id')) {
+      const reqId = url.searchParams.get('id');
+      if (reqId && /^\d+$/.test(reqId)) {
         try {
           let data = null;
-          let type = 'book';
-          if (url.pathname.includes('article')) {
-            data = await env.DB.prepare('SELECT id, title, content, cover_url FROM articles WHERE id=?').bind(articleId).first();
-            type = 'article';
+          let isArticle = url.pathname.indexOf('article') !== -1;
+          if (isArticle) {
+            data = await env.DB.prepare('SELECT id, title, content, cover_url FROM articles WHERE id=?').bind(reqId).first();
           } else {
-            data = await env.DB.prepare('SELECT id, title, author, description, cover_url FROM books WHERE id=?').bind(bookId).first();
+            data = await env.DB.prepare('SELECT id, title, author, description, cover_url FROM books WHERE id=?').bind(reqId).first();
           }
-          if (data) {
+          if (data && data.title) {
             const origin = new URL(request.url).origin;
-            let coverUrl = data.cover_url || data.image_url || '';
-            if (!coverUrl) coverUrl = origin + '/logo.png';
-            if (coverUrl.startsWith('/')) coverUrl = origin + coverUrl;
-            else if (!coverUrl.startsWith('http')) coverUrl = origin + '/cdn/' + coverUrl.replace(/^\/+/, '');
-            // Encode spaces
-            try { coverUrl = encodeURI(decodeURI(coverUrl)); } catch(e) {}
-            
-            const title = (data.title || 'كتاب من رفوف').slice(0, 100);
-            const desc = (data.description || data.content || 'اقرأ الكتاب على منصة رفوف').slice(0, 200);
-            const pageUrl = origin + url.pathname + '?id=' + (bookId || articleId);
-            
-            // Fetch original HTML
-            const originalRes = env.ASSETS ? await env.ASSETS.fetch(request) : null;
-            let html = originalRes ? await originalRes.text() : '<html><head></head><body></body></html>';
-            
-            const ogTags = `
-    <meta property="og:type" content="${type === 'book' ? 'books.book' : 'article'}" />
-    <meta property="og:title" content="${title.replace(/"/g, '&quot;')}" />
-    <meta property="og:description" content="${desc.replace(/"/g, '&quot;')}" />
-    <meta property="og:image" content="${coverUrl}" />
-    <meta property="og:image:width" content="800" />
-    <meta property="og:image:height" content="1200" />
-    <meta property="og:url" content="${pageUrl}" />
-    <meta property="og:site_name" content="رفوف - منصة الكتب" />
-    <meta property="og:locale" content="ar_AR" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${title.replace(/"/g, '&quot;')}" />
-    <meta name="twitter:description" content="${desc.replace(/"/g, '&quot;')}" />
-    <meta name="twitter:image" content="${coverUrl}" />
-    <link rel="canonical" href="${pageUrl}" />
-`;
-            // Inject into <head>
-            if (html.includes('<head>')) {
-              html = html.replace('<head>', '<head>' + ogTags);
-            } else if (html.includes('<head ')) {
-              html = html.replace(/<head[^>]*>/, (m) => m + ogTags);
+            let coverUrl = data.cover_url || '';
+            if (coverUrl) {
+              if (coverUrl.charAt(0) === '/') coverUrl = origin + coverUrl;
+              else if (coverUrl.indexOf('http') !== 0) coverUrl = origin + '/cdn/' + coverUrl.replace(/^\/+/, '');
+            } else {
+              coverUrl = origin + '/logo.png';
             }
-            return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+            const esc = (s) => (s||'').toString().replace(/"/g, '&quot;').replace(/</g,'&lt;').slice(0,200);
+            const title = esc(data.title);
+            const desc = esc(data.description || data.content || 'اقرأ على منصة رفوف');
+            const pageUrl = origin + url.pathname + '?id=' + reqId;
+            
+            const originalRes = env.ASSETS ? await env.ASSETS.fetch(request) : null;
+            if (originalRes) {
+              let html = await originalRes.text();
+              const ogTags = '<meta property="og:type" content="books.book" />' +
+                '<meta property="og:title" content="' + title + '" />' +
+                '<meta property="og:description" content="' + desc + '" />' +
+                '<meta property="og:image" content="' + coverUrl + '" />' +
+                '<meta property="og:url" content="' + pageUrl + '" />' +
+                '<meta property="og:site_name" content="رفوف" />' +
+                '<meta name="twitter:card" content="summary_large_image" />' +
+                '<meta name="twitter:title" content="' + title + '" />' +
+                '<meta name="twitter:image" content="' + coverUrl + '" />' +
+                '<link rel="canonical" href="' + pageUrl + '" />';
+              if (html.indexOf('<head>') !== -1) {
+                html = html.replace('<head>', '<head>' + ogTags);
+                return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+              }
+            }
           }
-        } catch(e) {
-          console.log('OG error', e);
-          // fallback to normal assets
-        }
+        } catch(e) {}
       }
     }
 
