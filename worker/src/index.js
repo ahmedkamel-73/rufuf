@@ -1,4 +1,3 @@
-
 import bcrypt from 'bcryptjs';
 
 export class ForumRoom {
@@ -212,23 +211,22 @@ export default {
 
 
 
-    // ===== CLEAN URL SUPPORT - /book/5 /reader/5 =====
-    if (method === 'GET' && (url.pathname.match(/^\/book\/\d+\/?$/) || url.pathname.match(/^\/reader\/\d+\/?$/) || url.pathname.match(/^\/article\/\d+\/?$/))) {
-      // Rewrite to .html version for ASSETS fetch
-      const isReader = url.pathname.indexOf('reader') !== -1;
-      const target = isReader ? '/reader.html' : (url.pathname.indexOf('article') !== -1 ? '/article.html' : '/book.html');
-      const idMatch = url.pathname.match(/\/(\d+)\/?$/);
-      const newUrl = new URL(request.url);
-      newUrl.pathname = target;
-      if (idMatch) newUrl.searchParams.set('id', idMatch[1]);
-      request = new Request(newUrl.toString(), request);
-      url = new URL(newUrl.toString());
+    // CLEAN URL: /book/5 -> /book.html?id=5
+    let pathnameForAssets = url.pathname;
+    let searchForAssets = url.search;
+    const cleanMatch = url.pathname.match(/^\/(book|reader|article)\/(\d+)\/?$/);
+    if (method === 'GET' && cleanMatch) {
+      const type = cleanMatch[1];
+      const id = cleanMatch[2];
+      pathnameForAssets = '/' + type + '.html';
+      searchForAssets = '?id=' + id;
     }
 
 
     // ===== OPEN GRAPH FOR SHARE - FIX V32 SAFE - صور الكتب في الشير =====
-    if ((url.pathname.indexOf('reader') !== -1 || url.pathname.indexOf('book') !== -1 || url.pathname.indexOf('article') !== -1) && method === 'GET' && url.searchParams.has('id')) {
-      const reqId = url.searchParams.get('id');
+    const ogCleanMatch = url.pathname.match(/^\/(book|reader|article)\/(\d+)\/?$/);
+    if ((url.pathname.indexOf('reader') !== -1 || url.pathname.indexOf('book') !== -1 || url.pathname.indexOf('article') !== -1 || ogCleanMatch) && method === 'GET' && (url.searchParams.has('id') || ogCleanMatch)) {
+      const reqId = ogCleanMatch ? ogCleanMatch[2] : url.searchParams.get('id');
       if (reqId && /^\d+$/.test(reqId)) {
         try {
           let data = null;
@@ -276,10 +274,17 @@ export default {
     }
 
 
-    // Assets fallback - AFTER CDN and /api/file/
+    // Assets fallback - AFTER CDN and /api/file/ - WITH CLEAN URL SUPPORT
     if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/cdn/')) {
       if (url.pathname.includes('..') || url.pathname.includes('.env')) {
         return new Response('Forbidden', { status: 403 });
+      }
+      if (typeof pathnameForAssets !== 'undefined' && pathnameForAssets !== url.pathname) {
+        const newUrl = new URL(request.url);
+        newUrl.pathname = pathnameForAssets;
+        newUrl.search = searchForAssets;
+        const newReq = new Request(newUrl.toString(), { method: request.method, headers: request.headers });
+        return env.ASSETS ? env.ASSETS.fetch(newReq) : new Response('Not found', { status: 404 });
       }
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
     }
