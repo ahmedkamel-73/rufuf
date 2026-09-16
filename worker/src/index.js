@@ -1,3 +1,4 @@
+
 import bcrypt from 'bcryptjs';
 
 export class ForumRoom {
@@ -207,6 +208,21 @@ export default {
       const limit = isLogin ? LOGIN_RATE_LIMIT_MAX : RATE_LIMIT_MAX;
       const allowed = await checkRateLimit(ip + (isLogin ? ':login' : ''), env, limit);
       if (!allowed) return json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429);
+    }
+
+
+
+    // ===== CLEAN URL SUPPORT - /book/5 /reader/5 =====
+    if (method === 'GET' && (url.pathname.match(/^\/book\/\d+\/?$/) || url.pathname.match(/^\/reader\/\d+\/?$/) || url.pathname.match(/^\/article\/\d+\/?$/))) {
+      // Rewrite to .html version for ASSETS fetch
+      const isReader = url.pathname.indexOf('reader') !== -1;
+      const target = isReader ? '/reader.html' : (url.pathname.indexOf('article') !== -1 ? '/article.html' : '/book.html');
+      const idMatch = url.pathname.match(/\/(\d+)\/?$/);
+      const newUrl = new URL(request.url);
+      newUrl.pathname = target;
+      if (idMatch) newUrl.searchParams.set('id', idMatch[1]);
+      request = new Request(newUrl.toString(), request);
+      url = new URL(newUrl.toString());
     }
 
 
@@ -788,4 +804,3 @@ export default {
     return json({ error: 'Route not found: ' + url.pathname }, 404);
   }
 };
-
