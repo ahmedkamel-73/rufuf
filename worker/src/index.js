@@ -185,7 +185,41 @@ export default {
 
     if (method === 'OPTIONS') return json({}, 204);
 
-    // SECURITY: Rate limiting for all API routes
+    // ===== CDN MUST BE BEFORE ASSETS - FIX V26 =====
+    if (url.pathname.startsWith('/cdn/') && method === 'GET') {
+      let key = url.pathname.replace('/cdn/','').split('?')[0];
+      try { key = decodeURIComponent(key); } catch(e){}
+      key = safeDecodeKey(key);
+      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
+      let obj = await env.R2.get(key);
+      if (!obj) {
+        const withoutPrefix = key.replace(/^(covers|books|avatars)\//, '');
+        obj = await env.R2.get(withoutPrefix);
+      }
+      if (!obj) {
+        for (const variant of getKeyVariants(key)) {
+          obj = await env.R2.get(variant);
+          if (obj) break;
+          const v2 = variant.replace(/^(covers|books|avatars)\//, '');
+          const o2 = await env.R2.get(v2);
+          if (o2) { obj = o2; break; }
+        }
+      }
+      if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
+      const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
+      return new Response(obj.body, { headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=31536000', 'X-Content-Type-Options': 'nosniff' } });
+    }
+
+    if (url.pathname.startsWith('/api/file/') && method === 'GET') {
+      let key = url.pathname.replace('/api/file/','');
+      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
+      let obj = await env.R2.get(key);
+      if (!obj) obj = await env.R2.get(key.replace(/^(covers|books|avatars)\//, ''));
+      if (!obj) return new Response('Not found', { status: 404 });
+      return new Response(obj.body, { headers: { 'Content-Type': obj.httpMetadata?.contentType || 'application/pdf', 'Cache-Control': 'private, max-age=3600' } });
+    }
+
+    // SECURITY: Rate limiting for API routes
     if (url.pathname.startsWith('/api/')) {
       const isLogin = url.pathname.includes('/auth/login') || url.pathname.includes('/auth/register');
       const limit = isLogin ? LOGIN_RATE_LIMIT_MAX : RATE_LIMIT_MAX;
@@ -193,10 +227,8 @@ export default {
       if (!allowed) return json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429);
     }
 
-    // JWT_SECRET check removed - fallback will be used
-
-    // Assets fallback - SECURITY: Block direct access to sensitive files
-    if (!url.pathname.startsWith('/api/')) {
+    // Assets fallback - MUST BE AFTER CDN
+    if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/cdn/')) {
       if (url.pathname.includes('..') || url.pathname.includes('.env')) {
         return new Response('Forbidden', { status: 403 });
       }
