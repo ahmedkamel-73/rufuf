@@ -1,11 +1,9 @@
-
 import bcrypt from 'bcryptjs';
 
 export class ForumRoom {
   constructor(state, env) { this.state = state; this.env = env; this.sessions = new Set(); }
   async fetch(req) {
     const url = new URL(req.url);
-    // SECURITY: Only allow websocket upgrade with auth check later
     if (url.pathname.endsWith('/websocket')) {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
@@ -16,50 +14,41 @@ export class ForumRoom {
     return new Response('Forum DO', { status: 200 });
   }
   async webSocketMessage(ws, message) {
-    // SECURITY: Limit message size and sanitize
     if (message.length > 1000) return;
     for (let s of this.sessions) { if (s !== ws) try { s.send(message.slice(0,1000)); } catch(e){} }
   }
   async webSocketClose(ws){ this.sessions.delete(ws); }
 }
 
-// ===== SECURITY CONSTANTS =====
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-// V25: Safe key decoder for broken image keys with | and //
 function safeDecodeKey(encoded) {
-  try {
-    let k = decodeURIComponent(encoded);
-    // Try direct, if not found try variants
-    return k;
-  } catch(e) {
+  try { return decodeURIComponent(encoded); } catch(e) {
     try { return decodeURIComponent(encoded.replace(/\|/g, '%7C')); } catch(e2) { return encoded; }
   }
 }
 function getKeyVariants(key) {
   const variants = [key];
-  // If key contains |, try with %7C decoded, with _ replacement, with / replacement
   if (key.includes('|')) {
     variants.push(key.replace(/\|/g, '/'));
     variants.push(key.replace(/\|/g, '_'));
     variants.push(key.replace(/\|\//g, '/'));
   }
-  // Clean double slashes
   variants.push(key.replace(/\/\/+/g, '/'));
   return [...new Set(variants)];
 }
 
 const ALLOWED_BOOK_TYPES = ['application/pdf', 'application/epub+zip'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 30; // 30 requests per minute per IP
+const RATE_LIMIT_WINDOW = 60 * 1000;
+const RATE_LIMIT_MAX = 30;
 const LOGIN_RATE_LIMIT_MAX = 5;
 
 function securityHeaders() {
   return {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*', // TODO: في الإنتاج غيرها لدومينك فقط
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'X-Content-Type-Options': 'nosniff',
@@ -69,14 +58,11 @@ function securityHeaders() {
     'Content-Security-Policy': "default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; connect-src 'self';"
   };
 }
-
 function json(data, status=200, extraHeaders={}) {
   return new Response(JSON.stringify(data), { status, headers: { ...securityHeaders(), ...extraHeaders } });
 }
-
 function b64urlEncode(str) { return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function b64urlDecode(str) { str = str.replace(/-/g,'+').replace(/_/g,'/'); while(str.length %4) str+='='; return atob(str); }
-
 async function signJWT(payload, secret) {
   secret = secret || 'rufuf-fallback-secret-2024-v10-professional-long-enough-32!!';
   if (!secret || secret.length < 10) secret = 'rufuf-fallback-secret-2024-v10-professional-long-enough-32!!';
@@ -89,7 +75,6 @@ async function signJWT(payload, secret) {
   const sigB64 = b64urlEncode(String.fromCharCode(...new Uint8Array(sig)));
   return data + '.' + sigB64;
 }
-
 async function verifyJWT(token, secret) {
   try {
     if (!token || token.split('.').length !== 3) return null;
@@ -104,7 +89,6 @@ async function verifyJWT(token, secret) {
     return payload;
   } catch(e){ return null; }
 }
-
 async function getUserFromReq(req, env) {
   const auth = req.headers.get('Authorization') || '';
   const token = auth.replace('Bearer ','').trim();
@@ -115,111 +99,109 @@ async function getUserFromReq(req, env) {
   const user = await env.DB.prepare('SELECT id,email,name,display_name,bio,avatar_url,role,is_publisher,verified FROM users WHERE id=?').bind(payload.id).first();
   return user;
 }
-
-function getIP(req) {
-  return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || 'unknown';
-}
-
+function getIP(req) { return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || 'unknown'; }
 async function checkRateLimit(ip, env, max = RATE_LIMIT_MAX) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
   try {
     const row = await env.DB.prepare('SELECT count, window_start FROM rate_limits WHERE ip=?').bind(ip).first();
-    if (!row) {
-      await env.DB.prepare('INSERT INTO rate_limits (ip, count, window_start) VALUES (?,?,?)').bind(ip, 1, now).run();
-      return true;
-    }
-    if (row.window_start < windowStart) {
-      await env.DB.prepare('UPDATE rate_limits SET count=1, window_start=? WHERE ip=?').bind(now, ip).run();
-      return true;
-    }
+    if (!row) { await env.DB.prepare('INSERT INTO rate_limits (ip, count, window_start) VALUES (?,?,?)').bind(ip, 1, now).run(); return true; }
+    if (row.window_start < windowStart) { await env.DB.prepare('UPDATE rate_limits SET count=1, window_start=? WHERE ip=?').bind(now, ip).run(); return true; }
     if (row.count >= max) return false;
-    await env.DB.prepare('UPDATE rate_limits SET count=count+1 WHERE ip=?').bind(ip).run();
-    return true;
-  } catch(e) {
-    return true; // fail open for availability
-  }
+    await env.DB.prepare('UPDATE rate_limits SET count=count+1 WHERE ip=?').bind(ip).run(); return true;
+  } catch(e) { return true; }
 }
-
-function sanitizeString(str, maxLen=500) {
-  if (typeof str !== 'string') return '';
-  return str.trim().slice(0, maxLen).replace(/[<>]/g, '');
-}
-
-function sanitizeHTML(html) {
-  if (typeof html !== 'string') return '';
-  let clean = html;
-  // Remove dangerous event handlers and javascript: but KEEP script/iframe for ad networks
-  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
-  clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
-  clean = clean.replace(/javascript:/gi, '');
-  clean = clean.replace(/vbscript:/gi, '');
-  clean = clean.replace(/data:text\/html/gi, '');
-  // Allow ad-friendly tags - keep everything but limit length
-  // Allowed: div, span, a, img, p, iframe, script, ins, etc for A-ADS, AdSense
-  return clean.slice(0, 8000);
-}
-
-function sanitizeAdHTML(html, userRole) {
-  // For publishers: allow A-ADS, AdSense, etc
-  if (typeof html !== 'string') return '';
-  let clean = html;
-  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
-  clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
-  clean = clean.replace(/javascript:/gi, '');
-  // For non-admin, block attempts to steal data but allow ad scripts
-  // Block <script> that tries to access localStorage/cookies directly with suspicious patterns
-  // But allow known ad domains: a-ads.com, doubleclick.net, adsense, etc
-  return clean.slice(0, 10000);
-}
-
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
-}
+function sanitizeString(str, maxLen=500) { if (typeof str !== 'string') return ''; return str.trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function sanitizeHTML(html) { if (typeof html !== 'string') return ''; let clean = html; clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, ''); clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, ''); clean = clean.replace(/javascript:/gi, ''); clean = clean.replace(/vbscript:/gi, ''); clean = clean.replace(/data:text\/html/gi, ''); return clean.slice(0, 8000); }
+function sanitizeAdHTML(html, userRole) { if (typeof html !== 'string') return ''; let clean = html; clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, ''); clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, ''); clean = clean.replace(/javascript:/gi, ''); return clean.slice(0, 10000); }
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254; }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const method = request.method;
     const ip = getIP(request);
-
     if (method === 'OPTIONS') return json({}, 204);
 
-    // ===== CDN MUST BE BEFORE ASSETS - FIX V26 =====
+    // ===== CDN MUST BE BEFORE ASSETS - FIX V28 - FINAL =====
     if (url.pathname.startsWith('/cdn/') && method === 'GET') {
       let key = url.pathname.replace('/cdn/','').split('?')[0];
       try { key = decodeURIComponent(key); } catch(e){}
       key = safeDecodeKey(key);
+      key = key.replace(/\|/g, '/').replace(/\/\/+/g, '/').replace(/^\/+/, '');
       if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      let obj = await env.R2.get(key);
-      if (!obj) {
-        const withoutPrefix = key.replace(/^(covers|books|avatars)\//, '');
-        obj = await env.R2.get(withoutPrefix);
-      }
-      if (!obj) {
-        for (const variant of getKeyVariants(key)) {
-          obj = await env.R2.get(variant);
-          if (obj) break;
-          const v2 = variant.replace(/^(covers|books|avatars)\//, '');
-          const o2 = await env.R2.get(v2);
-          if (o2) { obj = o2; break; }
-        }
+      const base = key.replace(/^(covers|books|avatars)\//, '');
+      const candidates = [...new Set([key, base, `covers/${base}`, `books/${base}`, `avatars/${base}`, `covers/${key}`, `books/${key}`])];
+      const allTries = [];
+      for (let k of candidates) { allTries.push(k); for (let v of getKeyVariants(k)) allTries.push(v); }
+      let obj = null;
+      for (let k of [...new Set(allTries)]) {
+        if (!k) continue;
+        obj = await env.R2.get(k);
+        if (obj) break;
       }
       if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
       const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
       return new Response(obj.body, { headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=31536000', 'X-Content-Type-Options': 'nosniff' } });
     }
 
+    // ===== /api/file/ WITH RANGE SUPPORT - FIX V28 - PREVENTS APP CRASH =====
     if (url.pathname.startsWith('/api/file/') && method === 'GET') {
-      let key = url.pathname.replace('/api/file/','');
+      let key = url.pathname.replace('/api/file/','').split('?')[0];
+      try { key = decodeURIComponent(key); } catch(e){}
+      key = key.replace(/\|/g, '/').replace(/\/\/+/g, '/').replace(/^\/+/, '');
       if (key.includes('..')) return new Response('Forbidden', { status: 403 });
       let obj = await env.R2.get(key);
       if (!obj) obj = await env.R2.get(key.replace(/^(covers|books|avatars)\//, ''));
+      if (!obj) {
+        for (const v of getKeyVariants(key)) {
+          obj = await env.R2.get(v);
+          if (obj) break;
+          const v2 = v.replace(/^(covers|books|avatars)\//, '');
+          const o2 = await env.R2.get(v2);
+          if (o2) { obj = o2; break; }
+        }
+      }
       if (!obj) return new Response('Not found', { status: 404 });
-      return new Response(obj.body, { headers: { 'Content-Type': obj.httpMetadata?.contentType || 'application/pdf', 'Cache-Control': 'private, max-age=3600' } });
+      const size = obj.size;
+      const contentType = obj.httpMetadata?.contentType || 'application/pdf';
+      const range = request.headers.get('Range');
+      if (range) {
+        const m = /bytes=(\d+)-(\d+)?/.exec(range);
+        if (m) {
+          const start = parseInt(m[1], 10);
+          const end = m[2] ? parseInt(m[2], 10) : size - 1;
+          let sliced = null;
+          try { sliced = await env.R2.get(key, { range: { offset: start, length: end - start + 1 } }); } catch(e){}
+          if (!sliced) {
+            try { sliced = await env.R2.get(key.replace(/^(covers|books|avatars)\//, ''), { range: { offset: start, length: end - start + 1 } }); } catch(e){}
+          }
+          const body = sliced ? sliced.body : obj.body;
+          return new Response(body, {
+            status: 206,
+            headers: {
+              'Content-Type': contentType,
+              'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': '' + (end - start + 1),
+              'Cache-Control': 'private, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+      }
+      return new Response(obj.body, {
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': size,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'private, max-age=3600',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
     }
 
-    // SECURITY: Rate limiting for API routes
+    // Rate limiting
     if (url.pathname.startsWith('/api/')) {
       const isLogin = url.pathname.includes('/auth/login') || url.pathname.includes('/auth/register');
       const limit = isLogin ? LOGIN_RATE_LIMIT_MAX : RATE_LIMIT_MAX;
@@ -227,7 +209,7 @@ export default {
       if (!allowed) return json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429);
     }
 
-    // Assets fallback - MUST BE AFTER CDN
+    // Assets fallback - AFTER CDN and /api/file/
     if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/cdn/')) {
       if (url.pathname.includes('..') || url.pathname.includes('.env')) {
         return new Response('Forbidden', { status: 403 });
@@ -235,7 +217,7 @@ export default {
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
     }
 
-    // ===== AUTH - SECURED =====
+// ===== AUTH - SECURED =====
     if (url.pathname === '/api/auth/register' && method === 'POST') {
       try {
         const { email, password, name } = await request.json();
@@ -325,59 +307,7 @@ export default {
       }
     }
 
-    // CDN FIXED V10.1 - handles old bad keys with | and // and encoded chars
-    if (url.pathname.startsWith('/cdn/') && method === 'GET') {
-      let key = url.pathname.replace('/cdn/','').split('?')[0];
-      try { key = decodeURIComponent(key); } catch(e){}
-      key = safeDecodeKey(key);
-      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      let obj = await env.R2.get(key);
-      if (!obj) {
-        for (const variant of getKeyVariants(key)) {
-          obj = await env.R2.get(variant);
-          if (obj) break;
-        }
-      }
-      if (!obj && key.includes('%')) {
-        try { obj = await env.R2.get(decodeURIComponent(key)); } catch(e){}
-      }
-      if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
-      const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
-      // Allow any image/* now
-      if (!contentType.startsWith('image/') && !ALLOWED_IMAGE_TYPES.includes(contentType)) {
-        // Still serve if it's image extension
-        if (!key.match(/\.(jpg|jpeg|png|webp|gif|png)$/i) && !contentType.includes('image')) {
-          return new Response('Forbidden - use /api/file for books', { status: 403 });
-        }
-      }
-      return new Response(obj.body, { 
-        headers: { 
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000',
-          'X-Content-Type-Options': 'nosniff'
-        } 
-      });
-    }
-
-    // SECURITY: /api/file/ requires auth for books
-    if (url.pathname.startsWith('/api/file/') && method === 'GET') {
-      const key = url.pathname.replace('/api/file/','');
-      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      const obj = await env.R2.get(key);
-      if (!obj) return new Response('Not found', { status: 404 });
-      
-      const contentType = obj.httpMetadata?.contentType || '';
-      // V19 PUBLIC: guest reading allowed, no auth
-      
-      return new Response(obj.body, { 
-        headers: { 
-          'Content-Type': contentType,
-          'Cache-Control': 'private, max-age=3600',
-          'X-Content-Type-Options': 'nosniff'
-        } 
-      });
-    }
-
+    
     // ===== BOOKS - FIXED V15 - returns array for frontend compatibility =====
     if (url.pathname === '/api/books' && method === 'GET') {
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
