@@ -5,7 +5,6 @@ export class ForumRoom {
   constructor(state, env) { this.state = state; this.env = env; this.sessions = new Set(); }
   async fetch(req) {
     const url = new URL(req.url);
-    // SECURITY: Only allow websocket upgrade with auth check later
     if (url.pathname.endsWith('/websocket')) {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
@@ -16,50 +15,41 @@ export class ForumRoom {
     return new Response('Forum DO', { status: 200 });
   }
   async webSocketMessage(ws, message) {
-    // SECURITY: Limit message size and sanitize
     if (message.length > 1000) return;
     for (let s of this.sessions) { if (s !== ws) try { s.send(message.slice(0,1000)); } catch(e){} }
   }
   async webSocketClose(ws){ this.sessions.delete(ws); }
 }
 
-// ===== SECURITY CONSTANTS =====
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-// V25: Safe key decoder for broken image keys with | and //
 function safeDecodeKey(encoded) {
-  try {
-    let k = decodeURIComponent(encoded);
-    // Try direct, if not found try variants
-    return k;
-  } catch(e) {
+  try { return decodeURIComponent(encoded); } catch(e) {
     try { return decodeURIComponent(encoded.replace(/\|/g, '%7C')); } catch(e2) { return encoded; }
   }
 }
 function getKeyVariants(key) {
   const variants = [key];
-  // If key contains |, try with %7C decoded, with _ replacement, with / replacement
   if (key.includes('|')) {
     variants.push(key.replace(/\|/g, '/'));
     variants.push(key.replace(/\|/g, '_'));
     variants.push(key.replace(/\|\//g, '/'));
   }
-  // Clean double slashes
   variants.push(key.replace(/\/\/+/g, '/'));
   return [...new Set(variants)];
 }
 
 const ALLOWED_BOOK_TYPES = ['application/pdf', 'application/epub+zip'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 30; // 30 requests per minute per IP
+const RATE_LIMIT_WINDOW = 60 * 1000;
+const RATE_LIMIT_MAX = 30;
 const LOGIN_RATE_LIMIT_MAX = 5;
 
 function securityHeaders() {
   return {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*', // TODO: في الإنتاج غيرها لدومينك فقط
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'X-Content-Type-Options': 'nosniff',
@@ -69,14 +59,11 @@ function securityHeaders() {
     'Content-Security-Policy': "default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; connect-src 'self';"
   };
 }
-
 function json(data, status=200, extraHeaders={}) {
   return new Response(JSON.stringify(data), { status, headers: { ...securityHeaders(), ...extraHeaders } });
 }
-
 function b64urlEncode(str) { return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function b64urlDecode(str) { str = str.replace(/-/g,'+').replace(/_/g,'/'); while(str.length %4) str+='='; return atob(str); }
-
 async function signJWT(payload, secret) {
   secret = secret || 'rufuf-fallback-secret-2024-v10-professional-long-enough-32!!';
   if (!secret || secret.length < 10) secret = 'rufuf-fallback-secret-2024-v10-professional-long-enough-32!!';
@@ -89,7 +76,6 @@ async function signJWT(payload, secret) {
   const sigB64 = b64urlEncode(String.fromCharCode(...new Uint8Array(sig)));
   return data + '.' + sigB64;
 }
-
 async function verifyJWT(token, secret) {
   try {
     if (!token || token.split('.').length !== 3) return null;
@@ -104,7 +90,6 @@ async function verifyJWT(token, secret) {
     return payload;
   } catch(e){ return null; }
 }
-
 async function getUserFromReq(req, env) {
   const auth = req.headers.get('Authorization') || '';
   const token = auth.replace('Bearer ','').trim();
@@ -115,77 +100,109 @@ async function getUserFromReq(req, env) {
   const user = await env.DB.prepare('SELECT id,email,name,display_name,bio,avatar_url,role,is_publisher,verified FROM users WHERE id=?').bind(payload.id).first();
   return user;
 }
-
-function getIP(req) {
-  return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || 'unknown';
-}
-
+function getIP(req) { return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || 'unknown'; }
 async function checkRateLimit(ip, env, max = RATE_LIMIT_MAX) {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
   try {
     const row = await env.DB.prepare('SELECT count, window_start FROM rate_limits WHERE ip=?').bind(ip).first();
-    if (!row) {
-      await env.DB.prepare('INSERT INTO rate_limits (ip, count, window_start) VALUES (?,?,?)').bind(ip, 1, now).run();
-      return true;
-    }
-    if (row.window_start < windowStart) {
-      await env.DB.prepare('UPDATE rate_limits SET count=1, window_start=? WHERE ip=?').bind(now, ip).run();
-      return true;
-    }
+    if (!row) { await env.DB.prepare('INSERT INTO rate_limits (ip, count, window_start) VALUES (?,?,?)').bind(ip, 1, now).run(); return true; }
+    if (row.window_start < windowStart) { await env.DB.prepare('UPDATE rate_limits SET count=1, window_start=? WHERE ip=?').bind(now, ip).run(); return true; }
     if (row.count >= max) return false;
-    await env.DB.prepare('UPDATE rate_limits SET count=count+1 WHERE ip=?').bind(ip).run();
-    return true;
-  } catch(e) {
-    return true; // fail open for availability
-  }
+    await env.DB.prepare('UPDATE rate_limits SET count=count+1 WHERE ip=?').bind(ip).run(); return true;
+  } catch(e) { return true; }
 }
-
-function sanitizeString(str, maxLen=500) {
-  if (typeof str !== 'string') return '';
-  return str.trim().slice(0, maxLen).replace(/[<>]/g, '');
-}
-
-function sanitizeHTML(html) {
-  if (typeof html !== 'string') return '';
-  let clean = html;
-  // Remove dangerous event handlers and javascript: but KEEP script/iframe for ad networks
-  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
-  clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
-  clean = clean.replace(/javascript:/gi, '');
-  clean = clean.replace(/vbscript:/gi, '');
-  clean = clean.replace(/data:text\/html/gi, '');
-  // Allow ad-friendly tags - keep everything but limit length
-  // Allowed: div, span, a, img, p, iframe, script, ins, etc for A-ADS, AdSense
-  return clean.slice(0, 8000);
-}
-
-function sanitizeAdHTML(html, userRole) {
-  // For publishers: allow A-ADS, AdSense, etc
-  if (typeof html !== 'string') return '';
-  let clean = html;
-  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
-  clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, '');
-  clean = clean.replace(/javascript:/gi, '');
-  // For non-admin, block attempts to steal data but allow ad scripts
-  // Block <script> that tries to access localStorage/cookies directly with suspicious patterns
-  // But allow known ad domains: a-ads.com, doubleclick.net, adsense, etc
-  return clean.slice(0, 10000);
-}
-
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
-}
+function sanitizeString(str, maxLen=500) { if (typeof str !== 'string') return ''; return str.trim().slice(0, maxLen).replace(/[<>]/g, ''); }
+function sanitizeHTML(html) { if (typeof html !== 'string') return ''; let clean = html; clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, ''); clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, ''); clean = clean.replace(/javascript:/gi, ''); clean = clean.replace(/vbscript:/gi, ''); clean = clean.replace(/data:text\/html/gi, ''); return clean.slice(0, 8000); }
+function sanitizeAdHTML(html, userRole) { if (typeof html !== 'string') return ''; let clean = html; clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, ''); clean = clean.replace(/\son\w+\s*=\s*[^\s>]+/gi, ''); clean = clean.replace(/javascript:/gi, ''); return clean.slice(0, 10000); }
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254; }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const method = request.method;
     const ip = getIP(request);
-
     if (method === 'OPTIONS') return json({}, 204);
 
-    // SECURITY: Rate limiting for all API routes
+    // ===== CDN MUST BE BEFORE ASSETS - FIX V28 - FINAL =====
+    if (url.pathname.startsWith('/cdn/') && method === 'GET') {
+      let key = url.pathname.replace('/cdn/','').split('?')[0];
+      try { key = decodeURIComponent(key); } catch(e){}
+      key = safeDecodeKey(key);
+      key = key.replace(/\|/g, '/').replace(/\/\/+/g, '/').replace(/^\/+/, '');
+      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
+      const base = key.replace(/^(covers|books|avatars)\//, '');
+      const candidates = [...new Set([key, base, `covers/${base}`, `books/${base}`, `avatars/${base}`, `covers/${key}`, `books/${key}`])];
+      const allTries = [];
+      for (let k of candidates) { allTries.push(k); for (let v of getKeyVariants(k)) allTries.push(v); }
+      let obj = null;
+      for (let k of [...new Set(allTries)]) {
+        if (!k) continue;
+        obj = await env.R2.get(k);
+        if (obj) break;
+      }
+      if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
+      const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
+      return new Response(obj.body, { headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=31536000', 'X-Content-Type-Options': 'nosniff' } });
+    }
+
+    // ===== /api/file/ WITH RANGE SUPPORT - FIX V28 - PREVENTS APP CRASH =====
+    if (url.pathname.startsWith('/api/file/') && method === 'GET') {
+      let key = url.pathname.replace('/api/file/','').split('?')[0];
+      try { key = decodeURIComponent(key); } catch(e){}
+      key = key.replace(/\|/g, '/').replace(/\/\/+/g, '/').replace(/^\/+/, '');
+      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
+      let obj = await env.R2.get(key);
+      if (!obj) obj = await env.R2.get(key.replace(/^(covers|books|avatars)\//, ''));
+      if (!obj) {
+        for (const v of getKeyVariants(key)) {
+          obj = await env.R2.get(v);
+          if (obj) break;
+          const v2 = v.replace(/^(covers|books|avatars)\//, '');
+          const o2 = await env.R2.get(v2);
+          if (o2) { obj = o2; break; }
+        }
+      }
+      if (!obj) return new Response('Not found', { status: 404 });
+      const size = obj.size;
+      const contentType = obj.httpMetadata?.contentType || 'application/pdf';
+      const range = request.headers.get('Range');
+      if (range) {
+        const m = /bytes=(\d+)-(\d+)?/.exec(range);
+        if (m) {
+          const start = parseInt(m[1], 10);
+          const end = m[2] ? parseInt(m[2], 10) : size - 1;
+          let sliced = null;
+          try { sliced = await env.R2.get(key, { range: { offset: start, length: end - start + 1 } }); } catch(e){}
+          if (!sliced) {
+            try { sliced = await env.R2.get(key.replace(/^(covers|books|avatars)\//, ''), { range: { offset: start, length: end - start + 1 } }); } catch(e){}
+          }
+          const body = sliced ? sliced.body : obj.body;
+          return new Response(body, {
+            status: 206,
+            headers: {
+              'Content-Type': contentType,
+              'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': '' + (end - start + 1),
+              'Cache-Control': 'private, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+      }
+      return new Response(obj.body, {
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': size,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'private, max-age=3600',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // Rate limiting
     if (url.pathname.startsWith('/api/')) {
       const isLogin = url.pathname.includes('/auth/login') || url.pathname.includes('/auth/register');
       const limit = isLogin ? LOGIN_RATE_LIMIT_MAX : RATE_LIMIT_MAX;
@@ -194,23 +211,94 @@ export default {
     }
 
 
-    // ===== V36 MINIMAL - مقال مرن: مفتوح لسلسلة أو مقفل - لا يمس الإعلانات =====
-    try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN parent_id INTEGER').run(); } catch(e) {}
-    try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN is_open INTEGER DEFAULT 0').run(); } catch(e) {}
-    try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN chapter_order INTEGER').run(); } catch(e) {}
-    try { await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_articles_parent ON articles(parent_id, chapter_order)').run(); } catch(e) {}
 
-    // JWT_SECRET check removed - fallback will be used
+    // CLEAN URL: /book/5 -> /book.html?id=5
+    let pathnameForAssets = url.pathname;
+    let searchForAssets = url.search;
+    const cleanMatch = url.pathname.match(/^\/(book|reader|article)\/(\d+)\/?$/);
+    if (method === 'GET' && cleanMatch) {
+      const type = cleanMatch[1];
+      const id = cleanMatch[2];
+      pathnameForAssets = '/' + type + '.html';
+      searchForAssets = '?id=' + id;
+    }
 
-    // Assets fallback - SECURITY: Block direct access to sensitive files
-    if (!url.pathname.startsWith('/api/')) {
+
+
+    // CLEAN URL for series chapter: /series/5/3 or /series/5/chapter/3
+    const chapterCleanMatch = url.pathname.match(/^\/series\/(\d+)\/(?:chapter\/)?(\d+)\/?$/);
+    if (method === 'GET' && chapterCleanMatch) {
+      pathnameForAssets = '/article.html';
+      searchForAssets = '?series=' + chapterCleanMatch[1] + '&chapter=' + chapterCleanMatch[2];
+    }
+
+    // ===== OPEN GRAPH FOR SHARE - FIX V32 SAFE - صور الكتب في الشير =====
+    const ogCleanMatch = url.pathname.match(/^\/(book|reader|article)\/(\d+)\/?$/);
+    if ((url.pathname.indexOf('reader') !== -1 || url.pathname.indexOf('book') !== -1 || url.pathname.indexOf('article') !== -1 || ogCleanMatch) && method === 'GET' && (url.searchParams.has('id') || ogCleanMatch)) {
+      const reqId = ogCleanMatch ? ogCleanMatch[2] : url.searchParams.get('id');
+      if (reqId && /^\d+$/.test(reqId)) {
+        try {
+          let data = null;
+          let isArticle = url.pathname.indexOf('article') !== -1;
+          if (isArticle) {
+            data = await env.DB.prepare('SELECT id, title, content, cover_url FROM articles WHERE id=?').bind(reqId).first();
+          } else {
+            data = await env.DB.prepare('SELECT id, title, author, description, cover_url FROM books WHERE id=?').bind(reqId).first();
+          }
+          if (data && data.title) {
+            const origin = new URL(request.url).origin;
+            let coverUrl = data.cover_url || '';
+            if (coverUrl) {
+              if (coverUrl.charAt(0) === '/') coverUrl = origin + coverUrl;
+              else if (coverUrl.indexOf('http') !== 0) coverUrl = origin + '/cdn/' + coverUrl.replace(/^\/+/, '');
+            } else {
+              coverUrl = origin + '/logo.png';
+            }
+            const esc = (s) => (s||'').toString().replace(/"/g, '&quot;').replace(/</g,'&lt;').slice(0,200);
+            const title = esc(data.title);
+            const desc = esc(data.description || data.content || 'اقرأ على منصة رفوف');
+            const pageUrl = origin + url.pathname + '?id=' + reqId;
+            
+            const originalRes = env.ASSETS ? await env.ASSETS.fetch(request) : null;
+            if (originalRes) {
+              let html = await originalRes.text();
+              const ogTags = '<meta property="og:type" content="books.book" />' +
+                '<meta property="og:title" content="' + title + '" />' +
+                '<meta property="og:description" content="' + desc + '" />' +
+                '<meta property="og:image" content="' + coverUrl + '" />' +
+                '<meta property="og:url" content="' + pageUrl + '" />' +
+                '<meta property="og:site_name" content="رفوف" />' +
+                '<meta name="twitter:card" content="summary_large_image" />' +
+                '<meta name="twitter:title" content="' + title + '" />' +
+                '<meta name="twitter:image" content="' + coverUrl + '" />' +
+                '<link rel="canonical" href="' + pageUrl + '" />';
+              if (html.indexOf('<head>') !== -1) {
+                html = html.replace('<head>', '<head>' + ogTags);
+                return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+              }
+            }
+          }
+        } catch(e) {}
+      }
+    }
+
+
+    // Assets fallback - AFTER CDN and /api/file/ - WITH CLEAN URL SUPPORT
+    if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/cdn/')) {
       if (url.pathname.includes('..') || url.pathname.includes('.env')) {
         return new Response('Forbidden', { status: 403 });
+      }
+      if (typeof pathnameForAssets !== 'undefined' && pathnameForAssets !== url.pathname) {
+        const newUrl = new URL(request.url);
+        newUrl.pathname = pathnameForAssets;
+        newUrl.search = searchForAssets;
+        const newReq = new Request(newUrl.toString(), { method: request.method, headers: request.headers });
+        return env.ASSETS ? env.ASSETS.fetch(newReq) : new Response('Not found', { status: 404 });
       }
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
     }
 
-    // ===== AUTH - SECURED =====
+// ===== AUTH - SECURED =====
     if (url.pathname === '/api/auth/register' && method === 'POST') {
       try {
         const { email, password, name } = await request.json();
@@ -266,7 +354,7 @@ export default {
         // V14: More permissive - allow any image/* and pdf/epub
         const fileType = (file.type || '').toLowerCase();
         const fileName = (file.name || '').toLowerCase();
-        const isImage = fileType.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif)$/);
+        const isImage = fileType.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif|avif|heic|heif)$/);
         const isBook = fileType.includes('pdf') || fileType.includes('epub') || fileName.match(/\.(pdf|epub)$/) || fileType === 'application/octet-stream';
         
         const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
@@ -281,7 +369,8 @@ export default {
         // SECURITY: Sanitize filename - V15 fixed (was creating keys with / in screenshot)
         const safeName = (file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g,'_').slice(0, 60);
         const ext = safeName.includes('.') ? safeName.split('.').pop().slice(0,10) : (isImage ? 'jpg' : 'pdf');
-        const key = Date.now() + '_' + crypto.randomUUID().slice(0,8) + '_' + Date.now() + '.' + ext;
+        const prefix = isImage ? 'covers/' : 'books/';
+        const key = `${prefix}${Date.now()}-${crypto.randomUUID().slice(0,8)}.${ext}`;
         
         await env.R2.put(key, file.stream(), { 
           httpMetadata: { contentType: file.type },
@@ -299,59 +388,7 @@ export default {
       }
     }
 
-    // CDN FIXED V18 - handles old bad keys with | and // and encoded chars
-    if (url.pathname.startsWith('/cdn/') && method === 'GET') {
-      let key = url.pathname.replace('/cdn/','');
-      try { key = decodeURIComponent(key); } catch(e){}
-      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      // Try exact key first, then try to handle old malformed keys
-      let obj = await env.R2.get(key);
-      if (!obj && key.includes('%')) {
-        try { obj = await env.R2.get(decodeURIComponent(key)); } catch(e){}
-      }
-      // If still not found and key contains |, try key as-is with | (old bug keys)
-      if (!obj) {
-        // Last resort: list-like fallback - try without query params
-        const cleanKey = key.split('?')[0];
-        if (cleanKey !== key) obj = await env.R2.get(cleanKey);
-      }
-      if (!obj) return new Response('Not found: '+key.slice(0,100), { status: 404, headers:{'Content-Type':'text/plain'}});
-      const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
-      // Allow any image/* now
-      if (!contentType.startsWith('image/') && !ALLOWED_IMAGE_TYPES.includes(contentType)) {
-        // Still serve if it's image extension
-        if (!key.match(/\.(jpg|jpeg|png|webp|gif|png)$/i) && !contentType.includes('image')) {
-          return new Response('Forbidden - use /api/file for books', { status: 403 });
-        }
-      }
-      return new Response(obj.body, { 
-        headers: { 
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000',
-          'X-Content-Type-Options': 'nosniff'
-        } 
-      });
-    }
-
-    // SECURITY: /api/file/ requires auth for books
-    if (url.pathname.startsWith('/api/file/') && method === 'GET') {
-      const key = url.pathname.replace('/api/file/','');
-      if (key.includes('..')) return new Response('Forbidden', { status: 403 });
-      const obj = await env.R2.get(key);
-      if (!obj) return new Response('Not found', { status: 404 });
-      
-      const contentType = obj.httpMetadata?.contentType || '';
-      // V19 PUBLIC: guest reading allowed, no auth
-      
-      return new Response(obj.body, { 
-        headers: { 
-          'Content-Type': contentType,
-          'Cache-Control': 'private, max-age=3600',
-          'X-Content-Type-Options': 'nosniff'
-        } 
-      });
-    }
-
+    
     // ===== BOOKS - FIXED V15 - returns array for frontend compatibility =====
     if (url.pathname === '/api/books' && method === 'GET') {
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
@@ -418,6 +455,58 @@ export default {
     }
 
     // ===== ARTICLES - FIXED V15 =====
+
+    // ===== SERIES API - NEW =====
+    if (url.pathname === '/api/series' && method === 'GET') {
+      const { results } = await db.prepare("SELECT s.*, (SELECT COUNT(*) FROM articles WHERE series_id = s.id) as chapters_count FROM series s ORDER BY s.created_at DESC").all();
+      return json(results || []);
+    }
+    if (url.pathname === '/api/series' && method === 'POST') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const body = await request.json().catch(()=>({}));
+      const { title, description, cover_url, type, status } = body;
+      if (!title) return json({ error: 'Title required' }, 400);
+      const res = await db.prepare("INSERT INTO series (title, description, cover_url, author_id, author_name, type, status) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(title, description||'', cover_url||'', user.id, user.username||'مؤلف', type||'novel', status||'ongoing').run();
+      const id = res.meta.last_row_id;
+      const { results } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      return json(results ? results[0] : { id, title });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'GET') {
+      const id = parseInt(url.pathname.split('/').pop());
+      const { results: sRes } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      if (!sRes || !sRes.length) return json({ error: 'Series not found' }, 404);
+      const series = sRes[0];
+      const { results: chapters } = await db.prepare("SELECT * FROM articles WHERE series_id = ? ORDER BY chapter_number ASC, created_at ASC").bind(id).all();
+      return json({ ...series, chapters: chapters || [] });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+\/chapters$/) && method === 'GET') {
+      const parts = url.pathname.split('/');
+      const id = parseInt(parts[3]);
+      const { results } = await db.prepare("SELECT * FROM articles WHERE series_id = ? ORDER BY chapter_number ASC").bind(id).all();
+      return json(results || []);
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'PUT') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = parseInt(url.pathname.split('/').pop());
+      const body = await request.json().catch(()=>({}));
+      const { title, description, cover_url, type, status } = body;
+      await db.prepare("UPDATE series SET title = COALESCE(?, title), description = COALESCE(?, description), cover_url = COALESCE(?, cover_url), type = COALESCE(?, type), status = COALESCE(?, status) WHERE id = ?").bind(title||null, description||null, cover_url||null, type||null, status||null, id).run();
+      const { results } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      return json(results ? results[0] : { id });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'DELETE') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = parseInt(url.pathname.split('/').pop());
+      await db.prepare("DELETE FROM articles WHERE series_id = ?").bind(id).run();
+      await db.prepare("DELETE FROM series WHERE id = ?").bind(id).run();
+      return json({ success: true });
+    }
+    // ===== END SERIES API =====
+
+
     if (url.pathname === '/api/articles' && method === 'GET') {
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
       const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
@@ -441,11 +530,63 @@ export default {
       return json({ articles: arts.results, total: arts.results.length, page, limit });
     }
 
+
+    // ===== SERIES API - NEW =====
+    if (url.pathname === '/api/series' && method === 'GET') {
+      const { results } = await db.prepare("SELECT s.*, (SELECT COUNT(*) FROM articles WHERE series_id = s.id) as chapters_count FROM series s ORDER BY s.created_at DESC").all();
+      return json(results || []);
+    }
+    if (url.pathname === '/api/series' && method === 'POST') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const body = await request.json().catch(()=>({}));
+      const { title, description, cover_url, type, status } = body;
+      if (!title) return json({ error: 'Title required' }, 400);
+      const res = await db.prepare("INSERT INTO series (title, description, cover_url, author_id, author_name, type, status) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(title, description||'', cover_url||'', user.id, user.username||'مؤلف', type||'novel', status||'ongoing').run();
+      const id = res.meta.last_row_id;
+      const { results } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      return json(results ? results[0] : { id, title });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'GET') {
+      const id = parseInt(url.pathname.split('/').pop());
+      const { results: sRes } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      if (!sRes || !sRes.length) return json({ error: 'Series not found' }, 404);
+      const series = sRes[0];
+      const { results: chapters } = await db.prepare("SELECT * FROM articles WHERE series_id = ? ORDER BY chapter_number ASC, created_at ASC").bind(id).all();
+      return json({ ...series, chapters: chapters || [] });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+\/chapters$/) && method === 'GET') {
+      const parts = url.pathname.split('/');
+      const id = parseInt(parts[3]);
+      const { results } = await db.prepare("SELECT * FROM articles WHERE series_id = ? ORDER BY chapter_number ASC").bind(id).all();
+      return json(results || []);
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'PUT') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = parseInt(url.pathname.split('/').pop());
+      const body = await request.json().catch(()=>({}));
+      const { title, description, cover_url, type, status } = body;
+      await db.prepare("UPDATE series SET title = COALESCE(?, title), description = COALESCE(?, description), cover_url = COALESCE(?, cover_url), type = COALESCE(?, type), status = COALESCE(?, status) WHERE id = ?").bind(title||null, description||null, cover_url||null, type||null, status||null, id).run();
+      const { results } = await db.prepare("SELECT * FROM series WHERE id = ?").bind(id).all();
+      return json(results ? results[0] : { id });
+    }
+    if (url.pathname.match(/^\/api\/series\/\d+$/) && method === 'DELETE') {
+      const user = await getUserFromRequest(request, db);
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      const id = parseInt(url.pathname.split('/').pop());
+      await db.prepare("DELETE FROM articles WHERE series_id = ?").bind(id).run();
+      await db.prepare("DELETE FROM series WHERE id = ?").bind(id).run();
+      return json({ success: true });
+    }
+    // ===== END SERIES API =====
+
+
     if (url.pathname === '/api/articles' && method === 'POST') {
       const user = await getUserFromReq(request, env);
       if (!user || (user.role !== 'publisher' && user.role !== 'admin')) return json({ error: 'غير مصرح - ناشر فقط' }, 403);
       try {
-        const { title, content, cover_url, parent_id, is_open, chapter_order } = await request.json();
+        const { title, content, cover_url } = await request.json();
         if (!title || title.trim().length < 3) return json({ error: 'العنوان قصير' }, 400);
         if (!content || content.trim().length < 10) return json({ error: 'المحتوى قصير جداً' }, 400);
         if (title.length > 200) return json({ error: 'العنوان طويل' }, 400);
@@ -454,18 +595,8 @@ export default {
         const cleanContent = sanitizeString(content, 50000);
         const cleanCover = cover_url && (cover_url.startsWith('/cdn/') || cover_url.startsWith('/api/file/')) ? cover_url : '';
         
-        let cleanParent = null; let cleanIsOpen = 0; let cleanOrder = null;
-        if (parent_id && /^\d+$/.test(String(parent_id))) {
-          const parent = await env.DB.prepare('SELECT author_id,is_open FROM articles WHERE id=?').bind(parseInt(parent_id)).first();
-          if (parent && parent.is_open==1 && (parent.author_id==user.id || user.role=='admin')) {
-            cleanParent = parseInt(parent_id);
-            const mx = await env.DB.prepare('SELECT MAX(chapter_order) as mx FROM articles WHERE parent_id=?').bind(cleanParent).first();
-            cleanOrder = chapter_order ? parseInt(chapter_order) : ((mx?.mx||0)+1);
-          }
-        }
-        if (!cleanParent) { cleanIsOpen = is_open ? 1 : 0; }
-        const res = await env.DB.prepare('INSERT INTO articles (title,content,cover_url,author_id,parent_id,is_open,chapter_order) VALUES (?,?,?,?,?,?,?)')
-          .bind(cleanTitle, cleanContent, cleanCover, user.id, cleanParent, cleanIsOpen, cleanOrder).run();
+        const res = await env.DB.prepare('INSERT INTO articles (title,content,cover_url,author_id) VALUES (?,?,?,?)')
+          .bind(cleanTitle, cleanContent, cleanCover, user.id).run();
         return json({ id: res.meta.last_row_id, success: true });
       } catch(e) { return json({ error: 'بيانات غير صالحة' }, 400); }
     }
@@ -477,19 +608,6 @@ export default {
       if (!art) return json({ error: 'Not found' }, 404);
       return json(art);
     }
-
-
-    // ===== مقالات مرنة - هات فصول سلسلة مفتوحة =====
-    if (url.pathname.match(/^\/api\/articles\/\d+\/chapters$/) && method === 'GET') {
-      const id = url.pathname.split('/')[3];
-      if (!/^\d+$/.test(id)) return json({ error: 'ID غير صالح' }, 400);
-      const root = await env.DB.prepare('SELECT id,is_open FROM articles WHERE id=?').bind(id).first();
-      if (!root) return json({ error: 'Not found' }, 404);
-      const ch = await env.DB.prepare('SELECT a.*, u.display_name FROM articles a LEFT JOIN users u ON a.author_id=u.id WHERE a.parent_id=? ORDER BY a.chapter_order ASC, a.id ASC').bind(id).all();
-      return json({ root_id: parseInt(id), is_open: root.is_open, chapters: ch.results||[] });
-    }
-    // ===== END مرن =====
-
 
     // ===== ADS - SECURED WITH SANITIZATION =====
     if (url.pathname === '/api/ads' && method === 'GET') {
@@ -661,10 +779,10 @@ export default {
         const file = form.get('file');
         if (!file || !file.size) return json({ error: 'لا يوجد ملف' }, 400);
         if (file.size > 2*1024*1024) return json({ error: 'الصورة كبيرة - حد أقصى 2MB' }, 400);
-        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return json({ error: 'نوع الصورة غير مسموح - JPG, PNG, WEBP فقط' }, 400);
+        if (!file.type.startsWith('image/')) return json({ error: 'نوع الصورة غير مسموح - يجب أن تكون صورة' }, 400);
         const ext = file.name.split('.').pop() || 'jpg';
         const key = `avatars/${user.id}-${Date.now()}.${ext}`;
-        await env.BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+        await env.R2.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
         const avatarUrl = `/cdn/${key}`;
         await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, user.id).run();
         return json({ url: avatarUrl, success: true });
@@ -737,7 +855,7 @@ export default {
       if (!art) return json({ error: 'Not found' }, 404);
       if (user.role !== 'admin' && art.author_id !== user.id) return json({ error: 'غير مصرح - ليس مقالك' }, 403);
       try {
-        const { title, content, cover_url, parent_id, is_open, chapter_order } = await request.json();
+        const { title, content, cover_url } = await request.json();
         let setClause = []; let params = [];
         if (title !== undefined) { setClause.push('title=?'); params.push(sanitizeString(title,200)); }
         if (content !== undefined) { setClause.push('content=?'); params.push(sanitizeString(content,50000)); }
