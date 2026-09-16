@@ -1,3 +1,4 @@
+
 import bcrypt from 'bcryptjs';
 
 export class ForumRoom {
@@ -208,6 +209,67 @@ export default {
       const allowed = await checkRateLimit(ip + (isLogin ? ':login' : ''), env, limit);
       if (!allowed) return json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429);
     }
+
+
+    // ===== OPEN GRAPH FOR SHARE - FIX V30 - صور الكتب في الشير =====
+    if ((url.pathname === '/book.html' || url.pathname === '/books' || url.pathname.startsWith('/book') || url.pathname === '/reader.html' || url.pathname === '/read.html' || url.pathname === '/article.html') && method === 'GET') {
+      const bookId = url.searchParams.get('id');
+      const articleId = url.searchParams.get('id');
+      if (bookId || articleId) {
+        try {
+          let data = null;
+          let type = 'book';
+          if (url.pathname.includes('article')) {
+            data = await env.DB.prepare('SELECT id, title, content, cover_url FROM articles WHERE id=?').bind(articleId).first();
+            type = 'article';
+          } else {
+            data = await env.DB.prepare('SELECT id, title, author, description, cover_url FROM books WHERE id=?').bind(bookId).first();
+          }
+          if (data) {
+            const origin = new URL(request.url).origin;
+            let coverUrl = data.cover_url || '';
+            if (coverUrl.startsWith('/')) coverUrl = origin + coverUrl;
+            else if (!coverUrl.startsWith('http')) coverUrl = origin + '/cdn/' + coverUrl;
+            
+            const title = (data.title || 'كتاب من رفوف').slice(0, 100);
+            const desc = (data.description || data.content || 'اقرأ الكتاب على منصة رفوف').slice(0, 200);
+            const pageUrl = origin + url.pathname + '?id=' + (bookId || articleId);
+            
+            // Fetch original HTML
+            const originalRes = env.ASSETS ? await env.ASSETS.fetch(request) : null;
+            let html = originalRes ? await originalRes.text() : '<html><head></head><body></body></html>';
+            
+            const ogTags = `
+    <meta property="og:type" content="${type === 'book' ? 'books.book' : 'article'}" />
+    <meta property="og:title" content="${title.replace(/"/g, '&quot;')}" />
+    <meta property="og:description" content="${desc.replace(/"/g, '&quot;')}" />
+    <meta property="og:image" content="${coverUrl}" />
+    <meta property="og:image:width" content="800" />
+    <meta property="og:image:height" content="1200" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta property="og:site_name" content="رفوف - منصة الكتب" />
+    <meta property="og:locale" content="ar_AR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title.replace(/"/g, '&quot;')}" />
+    <meta name="twitter:description" content="${desc.replace(/"/g, '&quot;')}" />
+    <meta name="twitter:image" content="${coverUrl}" />
+    <link rel="canonical" href="${pageUrl}" />
+`;
+            // Inject into <head>
+            if (html.includes('<head>')) {
+              html = html.replace('<head>', '<head>' + ogTags);
+            } else if (html.includes('<head ')) {
+              html = html.replace(/<head[^>]*>/, (m) => m + ogTags);
+            }
+            return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+          }
+        } catch(e) {
+          console.log('OG error', e);
+          // fallback to normal assets
+        }
+      }
+    }
+
 
     // Assets fallback - AFTER CDN and /api/file/
     if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/cdn/')) {
