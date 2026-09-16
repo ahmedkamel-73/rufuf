@@ -211,10 +211,16 @@ export default {
     }
 
 
-    // ===== OPEN GRAPH FOR SHARE - FIX V30 - صور الكتب في الشير =====
-    if ((url.pathname === '/book.html' || url.pathname === '/books' || url.pathname.startsWith('/book') || url.pathname === '/reader.html' || url.pathname === '/read.html' || url.pathname === '/article.html') && method === 'GET') {
-      const bookId = url.searchParams.get('id');
-      const articleId = url.searchParams.get('id');
+    // ===== OPEN GRAPH FOR SHARE - FIX V31 - يمسك /reader/?id=5 و /book/?id= و /reader.html?id= =====
+    if ((url.pathname.includes('reader') || url.pathname.includes('book') || url.pathname.includes('article')) && method === 'GET' && (url.searchParams.has('id') || url.pathname.match(/\/(\d+)\/?$/))) {
+      let bookId = url.searchParams.get('id');
+      let articleId = url.searchParams.get('id');
+      // Support /reader/5 /book/5 style
+      if (!bookId) {
+        const match = url.pathname.match(/\/(\d+)\/?$/);
+        if (match) bookId = match[1];
+      }
+      if (!bookId) bookId = articleId;
       if (bookId || articleId) {
         try {
           let data = null;
@@ -227,9 +233,12 @@ export default {
           }
           if (data) {
             const origin = new URL(request.url).origin;
-            let coverUrl = data.cover_url || '';
+            let coverUrl = data.cover_url || data.image_url || '';
+            if (!coverUrl) coverUrl = origin + '/logo.png';
             if (coverUrl.startsWith('/')) coverUrl = origin + coverUrl;
-            else if (!coverUrl.startsWith('http')) coverUrl = origin + '/cdn/' + coverUrl;
+            else if (!coverUrl.startsWith('http')) coverUrl = origin + '/cdn/' + coverUrl.replace(/^\/+/, '');
+            // Encode spaces
+            try { coverUrl = encodeURI(decodeURI(coverUrl)); } catch(e) {}
             
             const title = (data.title || 'كتاب من رفوف').slice(0, 100);
             const desc = (data.description || data.content || 'اقرأ الكتاب على منصة رفوف').slice(0, 200);
