@@ -1,4 +1,5 @@
-// SECURED API - V10.1 FIXED - images fix
+
+// SECURED API - V6.3
 const API_BASE = '';
 
 function getToken() { return localStorage.getItem('token'); }
@@ -57,22 +58,18 @@ async function uploadFile(file){
   const token=getToken();
   if (!token) throw new Error('سجل دخول أولاً');
   
-  // FIXED V10.1: Accept any image/* (jpeg, png, webp, gif, avif, heic) + pdf/epub
+  // SECURITY: Client-side validation
   const MAX_BOOK = 50*1024*1024;
   const MAX_IMAGE = 5*1024*1024;
+  const ALLOWED_BOOK = ['application/pdf','application/epub+zip'];
+  const ALLOWED_IMG = ['image/jpeg','image/png','image/webp','image/jpg'];
   
-  const fileType = (file.type || '').toLowerCase();
-  const fileName = (file.name || '').toLowerCase();
-  
-  const isImage = fileType.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|avif|heic|heif)$/.test(fileName);
-  const isBook = fileType.includes('pdf') || fileType.includes('epub') || /\.(pdf|epub)$/.test(fileName) || fileType === 'application/octet-stream';
-  
+  const isImage = ALLOWED_IMG.includes(file.type);
   const maxSize = isImage ? MAX_IMAGE : MAX_BOOK;
-  if (file.size > maxSize) throw new Error(`الملف كبير جداً - الحد ${maxSize/1024/1024}MB - حجم ملفك ${(file.size/1024/1024).toFixed(1)}MB`);
+  if (file.size > maxSize) throw new Error(`الملف كبير جداً - الحد ${maxSize/1024/1024}MB`);
   if (file.size === 0) throw new Error('ملف فارغ');
-  
-  if (!isImage && !isBook) {
-    throw new Error(`نوع غير مسموح: ${file.type || file.name} - المسموح: صور و PDF/EPUB فقط`);
+  if (![...ALLOWED_BOOK, ...ALLOWED_IMG].includes(file.type)) {
+    throw new Error(`نوع غير مسموح: ${file.type}`);
   }
 
   const fd=new FormData();
