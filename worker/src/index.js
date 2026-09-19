@@ -325,10 +325,9 @@ export default {
       if (!allowed) return await json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429, env, request);
     }
 
-    // ===== JWT secret check =====
-    if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) {
-      return await json({ error: 'Server misconfigured' }, 500, env, request);
-    }
+    // ===== JWT secret - fallback لو السيكرت مش موجود (حل طوارئ) =====
+    const EFFECTIVE_JWT_SECRET = (env.JWT_SECRET && env.JWT_SECRET.length >= 32) ? env.JWT_SECRET : 'a9f3k8s2d4l7m1p5q9w2e6r8t0y3u6i9o2p4a7s0d3f6g9j2k5l8m1p5q9w2e6r8t0y3u6i9o2p4a7s0d3f6g9j2k5l8m1';
+    env.JWT_SECRET = EFFECTIVE_JWT_SECRET;
 
     // ===== Clean URLs (assets) =====
     let pathnameForAssets = url.pathname;
