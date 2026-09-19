@@ -225,7 +225,13 @@ export default {
     const method = request.method;
     const ip = getIP(request);
 
-    // ===== V36 MINIMAL FLEX - مقال مرن: مفتوح لسلسلة أو مقفول - آمن وتراكمي =====
+
+    // ===== V36 MINIMAL FLEX - إصلاح: إنشاء الجداول الناقصة تلقائياً =====
+    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)').run(); } catch(e) {}
+    try { await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key,value) VALUES ('allowed_origin', 'https://rufuf.ahmed73.workers.dev,https://73.workers.dev,https://rufuf.pages.dev')").run(); } catch(e) {}
+    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, name TEXT)').run(); } catch(e) {}
+    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS subcategories (id INTEGER PRIMARY KEY, category_id INTEGER, name TEXT)').run(); } catch(e) {}
+    try { const c=await env.DB.prepare('SELECT COUNT(*) as c FROM categories').first(); if((c?.c||0)==0){ await env.DB.prepare("INSERT OR IGNORE INTO categories (id,name) VALUES (1,'عام'),(2,'أدب'),(3,'تقنية')").run(); await env.DB.prepare("INSERT OR IGNORE INTO subcategories (id,category_id,name) VALUES (1,1,'عام'),(2,2,'رواية'),(3,3,'برمجة')").run(); } } catch(e) {}
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN parent_id INTEGER').run(); } catch(e) {}
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN is_open INTEGER DEFAULT 0').run(); } catch(e) {}
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN chapter_order INTEGER').run(); } catch(e) {}
