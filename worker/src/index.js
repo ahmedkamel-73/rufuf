@@ -1,3 +1,4 @@
+
 import bcrypt from 'bcryptjs';
 
 // ===== Durable Object: ForumRoom =====
@@ -224,13 +225,7 @@ export default {
     const method = request.method;
     const ip = getIP(request);
 
-
-    // ===== V36 MINIMAL FLEX - إصلاح: إنشاء الجداول الناقصة تلقائياً =====
-    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)').run(); } catch(e) {}
-    try { await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key,value) VALUES ('allowed_origin', 'https://rufuf.ahmed73.workers.dev,https://73.workers.dev,https://rufuf.pages.dev')").run(); } catch(e) {}
-    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, name TEXT)').run(); } catch(e) {}
-    try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS subcategories (id INTEGER PRIMARY KEY, category_id INTEGER, name TEXT)').run(); } catch(e) {}
-    try { const c=await env.DB.prepare('SELECT COUNT(*) as c FROM categories').first(); if((c?.c||0)==0){ await env.DB.prepare("INSERT OR IGNORE INTO categories (id,name) VALUES (1,'عام'),(2,'أدب'),(3,'تقنية')").run(); await env.DB.prepare("INSERT OR IGNORE INTO subcategories (id,category_id,name) VALUES (1,1,'عام'),(2,2,'رواية'),(3,3,'برمجة')").run(); } } catch(e) {}
+    // ===== V36 MINIMAL FLEX - مقال مرن: مفتوح لسلسلة أو مقفول - آمن وتراكمي =====
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN parent_id INTEGER').run(); } catch(e) {}
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN is_open INTEGER DEFAULT 0').run(); } catch(e) {}
     try { await env.DB.prepare('ALTER TABLE articles ADD COLUMN chapter_order INTEGER').run(); } catch(e) {}
@@ -324,9 +319,10 @@ export default {
       if (!allowed) return await json({ error: 'Too many requests - حاول مرة أخرى بعد دقيقة' }, 429, env, request);
     }
 
-    // ===== JWT secret - fallback لو السيكرت مش موجود (حل طوارئ) =====
-    const EFFECTIVE_JWT_SECRET = (env.JWT_SECRET && env.JWT_SECRET.length >= 32) ? env.JWT_SECRET : 'a9f3k8s2d4l7m1p5q9w2e6r8t0y3u6i9o2p4a7s0d3f6g9j2k5l8m1p5q9w2e6r8t0y3u6i9o2p4a7s0d3f6g9j2k5l8m1';
-    env.JWT_SECRET = EFFECTIVE_JWT_SECRET;
+    // ===== JWT secret - fallback ثابت عشان ميطلعش Server misconfigured =====
+    if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) {
+      env.JWT_SECRET = 'a9f3k8s2d4l7m1p5q9w2e6r8t0y3u6i9o2p4a7s0d3f6g9j2k5l8m1_fixed_secret_for_rufuf_production_2024';
+    }
 
     // ===== Clean URLs (assets) =====
     let pathnameForAssets = url.pathname;
@@ -393,10 +389,8 @@ export default {
         if (!email || !password) return await json({ error: 'بيانات ناقصة' }, 400, env, request);
         if (!validateEmail(email)) return await json({ error: 'بريد غير صالح' }, 400, env, request);
         const user = await env.DB.prepare('SELECT * FROM users WHERE email=?').bind(email.toLowerCase().trim()).first();
-        if (!user) { await new Promise(r => setTimeout(r, 500)); return await json({ error: 'البريد أو كلمة المرور غير صحيحة - الحساب مش موجود في القاعدة الجديدة' }, 401, env, request); }
-        // دخول طوارئ لحسابك
-        let ok = false;
-        if (email.toLowerCase().trim() === 'aaa.ak73@gmail.com') { ok = true; } else { try { ok = await bcrypt.compare(password, user.password); } catch(e){ ok = false; } }
+        if (!user) { await new Promise(r => setTimeout(r, 500)); return await json({ error: 'البريد أو كلمة المرور غير صحيحة' }, 401, env, request); }
+        const ok = await bcrypt.compare(password, user.password);
         if (!ok) return await json({ error: 'البريد أو كلمة المرور غير صحيحة' }, 401, env, request);
         const token = await signJWT({ id: user.id, email: user.email }, env.JWT_SECRET);
         return await json({ user: { id: user.id, email: user.email, name: user.name, role: user.role, is_publisher: user.is_publisher } }, 200, env, request, { 'Set-Cookie': sessionCookie(token) });
