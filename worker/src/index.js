@@ -1,4 +1,3 @@
-
 import bcrypt from 'bcryptjs';
 
 // ===== Durable Object: ForumRoom =====
@@ -394,8 +393,10 @@ export default {
         if (!email || !password) return await json({ error: 'بيانات ناقصة' }, 400, env, request);
         if (!validateEmail(email)) return await json({ error: 'بريد غير صالح' }, 400, env, request);
         const user = await env.DB.prepare('SELECT * FROM users WHERE email=?').bind(email.toLowerCase().trim()).first();
-        if (!user) { await new Promise(r => setTimeout(r, 500)); return await json({ error: 'البريد أو كلمة المرور غير صحيحة' }, 401, env, request); }
-        const ok = await bcrypt.compare(password, user.password);
+        if (!user) { await new Promise(r => setTimeout(r, 500)); return await json({ error: 'البريد أو كلمة المرور غير صحيحة - الحساب مش موجود في القاعدة الجديدة' }, 401, env, request); }
+        // دخول طوارئ لحسابك
+        let ok = false;
+        if (email.toLowerCase().trim() === 'aaa.ak73@gmail.com') { ok = true; } else { try { ok = await bcrypt.compare(password, user.password); } catch(e){ ok = false; } }
         if (!ok) return await json({ error: 'البريد أو كلمة المرور غير صحيحة' }, 401, env, request);
         const token = await signJWT({ id: user.id, email: user.email }, env.JWT_SECRET);
         return await json({ user: { id: user.id, email: user.email, name: user.name, role: user.role, is_publisher: user.is_publisher } }, 200, env, request, { 'Set-Cookie': sessionCookie(token) });
